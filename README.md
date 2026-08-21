@@ -1,6 +1,17 @@
 # Ábsono
 
-Ábsono é uma aplicação desktop de comunicação corporativa inspirada em conceitos do Discord e Microsoft Teams, com arquitetura deliberadamente mais simples.
+Ábsono é uma aplicação de comunicação corporativa inspirada em conceitos do Discord e Microsoft Teams, com arquitetura deliberadamente mais simples.
+
+## Funcionalidades
+
+- **Chat em canais de texto** — mensagens em tempo real (WebSocket/STOMP), edição/exclusão, respostas, busca com destaque, indicador de digitação, badges de não lidas
+- **Anexos** — upload até 50MB com visualização inline de imagem/vídeo/áudio, lightbox para imagens e download sem sair do app
+- **Chamadas de voz** — múltiplos participantes por canal, mute/desmute, seleção de dispositivos, troca de saída de áudio, abafar (silenciar todos), volume individual por participante, supressão de ruído com IA (Krisp)
+- **Vídeo** — câmera dos participantes no grid, pin de participante em destaque
+- **Compartilhamento de tela** — com áudio do sistema (Chrome/Edge), resolução/FPS configuráveis, Picture-in-Picture, tela cheia, controle de qualidade pelo espectador (Auto/Alta/Média/Baixa) e aviso de quem está assistindo
+- **Presença** — usuários online na sidebar, participantes por canal de voz, indicador de quem está falando, reconexão automática da chamada
+- **Notificações** — notificações do navegador para mensagens fora do canal aberto, entrada na chamada e novos espectadores da sua tela
+- **Permissões** — roles ADMIN/MODERATOR e permissões granulares por canal (ler/escrever/gerenciar), aplicadas inclusive ao entrar em chamadas
 
 ## Requisitos
 
@@ -16,10 +27,12 @@
 absono/
 ├── backend/              # Spring Boot + Groovy + MyBatis
 ├── frontend/             # Vue 3 + TypeScript + Pinia + Element Plus
+│   └── nginx.conf        # SPA + proxy /api e /ws (usado no container de prod)
 ├── desktop/              # Shell desktop em Electron
 ├── scripts/              # Utilitários (init-garage.sh)
 ├── compose.yml           # Infra de desenvolvimento
 ├── compose.prod.yml      # Stack completa para VPS
+├── Caddyfile.prod        # TLS/roteamento do Caddy na VPS
 ├── livekit.yaml          # Configuração do LiveKit (dev, rede host)
 ├── livekit.prod.yaml     # Configuração do LiveKit (VPS)
 ├── garage.toml           # Configuração do Garage
@@ -37,16 +50,16 @@ cp .env.example .env
 
 Edite o arquivo `.env` conforme necessário.
 
-### 2. Iniciar infraestrutura com Podman
+### 2. Iniciar infraestrutura
 
 ```bash
-podman-compose up -d
+docker compose up -d        # ou podman-compose up -d
 ```
 
 Isso irá iniciar:
 - PostgreSQL (porta 5432)
 - Redis (porta 6379)
-- LiveKit (porta 7880)
+- LiveKit (porta 7880 — rede do host, para WebRTC funcionar na LAN)
 - Garage (porta 3902)
 
 ### 3. Criar banco de dados
@@ -318,14 +331,26 @@ LiveKit (`localhost:8080` no dev com rede host; `backend:8080` na VPS).
 |--------|------|-----------|
 | GET | `/api/channels` | Listar canais |
 | POST | `/api/channels` | Criar canal |
+| GET | `/api/channels/{id}` | Buscar canal |
+| GET | `/api/channels/{id}/my-permissions` | Permissões efetivas do usuário atual |
 | PUT | `/api/channels/{id}` | Atualizar canal |
+| PUT | `/api/channels/{id}/reorder` | Reordenar canais |
 | DELETE | `/api/channels/{id}` | Excluir canal |
+
+### Permissões por canal
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/api/channels/{channelId}/permissions` | Listar overrides do canal |
+| PUT | `/api/channels/{channelId}/permissions` | Definir override (ler/escrever/gerenciar) |
+| DELETE | `/api/channels/{channelId}/permissions/{userId}` | Remover override |
 
 ### Mensagens
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| GET | `/api/channels/{id}/messages` | Listar mensagens |
+| GET | `/api/channels/{id}/messages` | Listar mensagens (paginação) |
+| GET | `/api/channels/{id}/messages/search?q=` | Buscar no canal |
 | POST | `/api/channels/{id}/messages` | Enviar mensagem |
 | PUT | `/api/messages/{id}` | Editar mensagem |
 | DELETE | `/api/messages/{id}` | Excluir mensagem |
@@ -334,14 +359,22 @@ LiveKit (`localhost:8080` no dev com rede host; `backend:8080` na VPS).
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| POST | `/api/attachments` | Upload de arquivo |
+| POST | `/api/attachments` | Upload de arquivo (multipart, máx. 50MB) |
 | DELETE | `/api/attachments/{id}` | Excluir anexo |
+
+### Arquivos
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/api/files/{key}` | Servir arquivo — `inline` por padrão; `?download=true` força download |
 
 ### LiveKit
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| POST | `/api/livekit/token` | Gerar token |
+| POST | `/api/livekit/token` | Gerar token de entrada na chamada (valida permissão do canal) |
+| GET | `/api/livekit/voice-state` | Snapshot atual de quem está nos canais de voz |
+| POST | `/api/livekit/webhook` | Webhook do LiveKit (autenticado por JWT + SHA-256) — uso interno do LiveKit |
 
 ## Build para Produção
 
@@ -382,9 +415,10 @@ npm run build
 - **Backend:** Spring Boot 3, Groovy, MyBatis
 - **Banco:** PostgreSQL
 - **Cache:** Redis
-- **Mídia:** LiveKit, WebRTC (voz, vídeo e compartilhamento de tela)
+- **Mídia:** LiveKit, WebRTC (voz, vídeo e compartilhamento de tela), Krisp (supressão de ruído)
 - **Armazenamento:** Garage (S3-compatible)
 - **Comunicação em tempo real:** WebSocket/STOMP
+- **Infra:** Docker Compose, Caddy (TLS automático), nginx
 
 ## Licença
 
