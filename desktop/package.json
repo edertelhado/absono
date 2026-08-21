@@ -1,0 +1,36 @@
+{
+  "name": "absono-desktop",
+  "version": "1.0.0",
+  "description": "Ábsono - Aplicação de comunicação corporativa",
+  "main": "main.cjs",
+  "private": true,
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "build": "pnpm --dir ../frontend build && electron-builder --linux AppImage"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.absono.app",
+    "productName": "Ábsono",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      {
+        "from": "../frontend/dist",
+        "to": "dist",
+        "filter": ["**/*"]
+      }
+    ],
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "build/icon.png",
+      "category": "Network"
+    }
+  }
+}

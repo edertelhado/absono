@@ -1,0 +1,324 @@
+:root {
+  /* ── Surface layers (darkest to lightest) ── */
+  --absono-bg-base: #101014;
+  --absono-surface-1: #1b1b25;
+  --absono-surface-2: #1f1f2e;
+  --absono-surface-3: #252536;
+
+  /* ── Primary (Linear Violet) ── */
+  --absono-primary: #5e6ad2;
+  --absono-primary-hover: #4e5bbf;
+  --absono-primary-active: #3f4aab;
+  --absono-primary-subtle: rgba(94, 106, 210, 0.1);
+
+  /* ── Text ── */
+  --absono-text: #f1f1f4;
+  --absono-text-secondary: #8a8f98;
+  --absono-text-muted: #6e7377;
+
+  /* ── Borders ── */
+  --absono-border: #2c2c3a;
+  --absono-border-subtle: #20202c;
+
+  /* ── Interactive ── */
+  --absono-hover: rgba(255, 255, 255, 0.04);
+  --absono-active: rgba(255, 255, 255, 0.06);
+
+  /* ── Status ── */
+  --absono-online: #3dd68c;
+  --absono-away: #f0c000;
+  --absono-dnd: #eb5757;
+  --absono-offline: #5a5f6a;
+
+  /* ── Semantic aliases ── */
+  --absono-bg: var(--absono-bg-base);
+  --absono-card-bg: var(--absono-surface-1);
+  --absono-sidebar-bg: var(--absono-surface-1);
+  --absono-footer-bg: var(--absono-bg-base);
+
+  /* ── Elevation ── */
+  --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 24px rgba(94, 106, 210, 0.15);
+
+  /* ── Typography ── */
+  --font-display: 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Spacing scale ── */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* ── Radius ── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+}
+
+/* ── Reset ── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  background-color: var(--absono-bg);
+  color: var(--absono-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  height: 100%;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--absono-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--absono-text-muted);
+}
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid var(--absono-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Selection ── */
+::selection {
+  background-color: var(--absono-primary);
+  color: #fff;
+}
+
+/* ── Element Plus dark overrides ── */
+.dark {
+  --el-bg-color: var(--absono-surface-1);
+  --el-bg-color-overlay: var(--absono-surface-2);
+  --el-bg-color-page: var(--absono-bg-base);
+  --el-text-color-primary: var(--absono-text);
+  --el-text-color-regular: var(--absono-text-secondary);
+  --el-text-color-secondary: var(--absono-text-muted);
+  --el-border-color: var(--absono-border);
+  --el-border-color-light: var(--absono-border);
+  --el-color-primary: var(--absono-primary);
+  --el-color-primary-light-3: var(--absono-primary-hover);
+  --el-fill-color-blank: var(--absono-surface-1);
+  --el-fill-color-light: var(--absono-surface-2);
+  --el-fill-color-lighter: var(--absono-surface-2);
+}
+
+/* ── Element Plus component overrides ── */
+.el-input__wrapper {
+  background-color: var(--absono-surface-1) !important;
+  box-shadow: 0 0 0 1px var(--absono-border) !important;
+  border-radius: var(--radius-md) !important;
+  transition: box-shadow 0.15s ease !important;
+
+  &:hover {
+    box-shadow: 0 0 0 1px var(--absono-text-muted) !important;
+  }
+
+  &.is-focus {
+    box-shadow:
+      0 0 0 1px var(--absono-primary),
+      0 0 0 3px rgba(94, 106, 210, 0.15) !important;
+  }
+}
+
+.el-input__inner {
+  color: var(--absono-text) !important;
+  font-family: var(--font-body) !important;
+
+  &::placeholder {
+    color: var(--absono-text-muted) !important;
+  }
+}
+
+.el-input__prefix .el-icon {
+  color: var(--absono-text-muted) !important;
+}
+
+.el-dialog {
+  background-color: var(--absono-surface-1) !important;
+  border: 1px solid var(--absono-border) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-modal) !important;
+}
+
+.el-dialog__title {
+  color: var(--absono-text) !important;
+  font-family: var(--font-display) !important;
+  font-weight: 600 !important;
+}
+
+.el-dialog__body {
+  color: var(--absono-text-secondary) !important;
+}
+
+.el-form-item__label {
+  color: var(--absono-text-secondary) !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+}
+
+.el-button--primary {
+  background-color: var(--absono-primary) !important;
+  border-color: var(--absono-primary) !important;
+  font-family: var(--font-body) !important;
+  font-weight: 500 !important;
+  border-radius: var(--radius-md) !important;
+  transition: all 0.15s ease !important;
+
+  &:hover,
+  &:focus {
+    background-color: var(--absono-primary-hover) !important;
+    border-color: var(--absono-primary-hover) !important;
+  }
+
+  &:active {
+    background-color: var(--absono-primary-active) !important;
+    border-color: var(--absono-primary-active) !important;
+  }
+}
+
+.el-button--default {
+  background-color: var(--absono-surface-2) !important;
+  border-color: var(--absono-border) !important;
+  color: var(--absono-text-secondary) !important;
+  border-radius: var(--radius-md) !important;
+
+  &:hover,
+  &:focus {
+    background-color: var(--absono-surface-3) !important;
+    border-color: var(--absono-text-muted) !important;
+    color: var(--absono-text) !important;
+  }
+}
+
+.el-button--danger {
+  border-radius: var(--radius-md) !important;
+}
+
+.el-button--success {
+  border-radius: var(--radius-md) !important;
+}
+
+.el-button.is-text {
+  background-color: transparent !important;
+  border-color: transparent !important;
+
+  &:hover {
+    background-color: var(--absono-hover) !important;
+  }
+}
+
+.el-button.is-circle {
+  border-radius: 50% !important;
+}
+
+.el-select__wrapper {
+  background-color: var(--absono-surface-2) !important;
+  box-shadow: 0 0 0 1px var(--absono-border) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.el-select__placeholder {
+  color: var(--absono-text-muted) !important;
+}
+
+.el-select__selected-item span {
+  color: var(--absono-text) !important;
+}
+
+.el-card {
+  background-color: var(--absono-surface-1) !important;
+  border: 1px solid var(--absono-border) !important;
+  border-radius: var(--radius-xl) !important;
+}
+
+.el-card__header {
+  border-bottom-color: var(--absono-border) !important;
+}
+
+.el-switch.is-checked .el-switch__core {
+  background-color: var(--absono-primary) !important;
+  border-color: var(--absono-primary) !important;
+}
+
+.el-message-box {
+  background-color: var(--absono-surface-1) !important;
+  border: 1px solid var(--absono-border) !important;
+  border-radius: var(--radius-xl) !important;
+}
+
+.el-message-box__title {
+  color: var(--absono-text) !important;
+}
+
+.el-message-box__content {
+  color: var(--absono-text-secondary) !important;
+}
+
+.el-textarea__inner {
+  background-color: var(--absono-surface-1) !important;
+  color: var(--absono-text) !important;
+  border-color: var(--absono-border) !important;
+  border-radius: var(--radius-md) !important;
+
+  &:focus {
+    border-color: var(--absono-primary);
+    box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.15);
+  }
+
+  &::placeholder {
+    color: var(--absono-text-muted) !important;
+  }
+}
+
+/* ── Utility classes ── */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+    <defs>
+        <!-- Gradiente do Fundo Azul Principal -->
+        <linearGradient id="bgGrad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#42A5F5" />
+            <stop offset="50%" stop-color="#1E88E5" />
+            <stop offset="100%" stop-color="#0D47A1" />
+        </linearGradient>
+
+        <!-- Gradiente do Círculo Branco Interno -->
+        <linearGradient id="whiteGrad" x1="116" y1="116" x2="396" y2="396" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="100%" stop-color="#E3F2FD" />
+        </linearGradient>
+
+        <!-- Gradiente da Letra 'a' -->
+        <linearGradient id="letterGrad" x1="184" y1="184" x2="330" y2="330" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1976D2" />
+            <stop offset="100%" stop-color="#0D47A1" />
+        </linearGradient>
+
+        <!-- Filtro de Sombra para o Botão -->
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#000000" flood-opacity="0.3"/>
+        </filter>
+        
+        <!-- Filtro de Sombra Interna (Círculo Branco) -->
+        <filter id="innerShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.2"/>
+        </filter>
+    </defs>
+
+    <!-- Borda externa escura com sombra projetada -->
+    <circle cx="256" cy="256" r="236" fill="#1565C0" filter="url(#shadow)"/>
+
+    <!-- Corpo Principal do Botão -->
+    <circle cx="256" cy="256" r="220" fill="url(#bgGrad)" />
+
+    <!-- Círculo Branco Interno -->
+    <circle cx="256" cy="256" r="140" fill="url(#whiteGrad)" filter="url(#innerShadow)" />
+
+    <!-- Design Exclusivo da letra 'a' geométrica -->
+    <g stroke="url(#letterGrad)" stroke-width="44" stroke-linecap="round" fill="none">
+        <circle cx="256" cy="258" r="50" />
+        <line x1="306" y1="204" x2="306" y2="308" />
+    </g>
+</svg>

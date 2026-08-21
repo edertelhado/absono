@@ -1,0 +1,75 @@
+server:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  port: ${SERVER_PORT:8080}
+
+spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/absono}
+    username: ${POSTGRES_USER:absono}
+    password: ${POSTGRES_PASSWORD:absono_secret}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      adjust-dates-to-context-time-zone: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: br.com.absono
+  type-handlers-package: br.com.absono.common.handler
+  configuration:
+    map-underscore-to-camel-case: true
+    call-setters-on-nulls: true
+    return-instance-for-empty-row: true
+
+jwt:
+  secret: ${JWT_SECRET:dev-jwt-secret-key-change-in-production}
+  expiration: 3600000
+  refresh-expiration: 604800000
+
+livekit:
+  url: ${LIVEKIT_URL:ws://localhost:7880}
+  internal-url: ${LIVEKIT_INTERNAL_URL:http://absono-livekit:7880}
+  api-key: ${LIVEKIT_API_KEY:devkey}
+  api-secret: ${LIVEKIT_API_SECRET:absono-livekit-dev-secret-32-chars!!}
+
+garage:
+  endpoint: ${GARAGE_ENDPOINT:http://localhost:3902}
+  access-key: ${GARAGE_ACCESS_KEY:garage_access_key}
+  secret-key: ${GARAGE_SECRET_KEY:garage_secret_key}
+  bucket: ${GARAGE_BUCKET:absono}
+  region: ${GARAGE_REGION:garage}
+
+logging:
+  level:
+    br.com.absono: INFO
+    org.springframework.security: INFO
+    org.mybatis: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized

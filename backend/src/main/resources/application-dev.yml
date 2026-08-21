@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/absono
+    username: absono
+    password: absono_secret
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  flyway:
+    enabled: true
+
+livekit:
+  url: ws://192.168.18.8:7880
+  internal-url: ${LIVEKIT_INTERNAL_URL:http://localhost:7880}
+  api-key: devkey
+  api-secret: absono-livekit-dev-secret-32-chars!!
+
+garage:
+  endpoint: http://192.168.18.8:3902
+  access-key: garage_access_key
+  secret-key: garage_secret_key
+  bucket: absono
+  region: garage
+
+logging:
+  level:
+    br.com.absono: DEBUG
+    org.springframework.security: DEBUG

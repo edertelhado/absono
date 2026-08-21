@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="br.com.absono.channel.ChannelPermissionMapper">
+
+    <resultMap id="PermissionResultMap" type="br.com.absono.channel.ChannelPermission">
+        <id property="id" column="id"/>
+        <result property="channelId" column="channel_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="canRead" column="can_read"/>
+        <result property="canWrite" column="can_write"/>
+        <result property="canManage" column="can_manage"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="findByChannelId" resultMap="PermissionResultMap">
+        SELECT id, channel_id, user_id, can_read, can_write, can_manage, created_at
+        FROM channel_permissions
+        WHERE channel_id = #{channelId}
+        ORDER BY created_at
+    </select>
+
+    <select id="findByUserId" resultMap="PermissionResultMap">
+        SELECT id, channel_id, user_id, can_read, can_write, can_manage, created_at
+        FROM channel_permissions
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByChannelAndUser" resultMap="PermissionResultMap">
+        SELECT id, channel_id, user_id, can_read, can_write, can_manage, created_at
+        FROM channel_permissions
+        WHERE channel_id = #{channelId} AND user_id = #{userId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO channel_permissions (id, channel_id, user_id, can_read, can_write, can_manage)
+        VALUES (#{id}, #{channelId}, #{userId}, #{canRead}, #{canWrite}, #{canManage})
+    </insert>
+
+    <update id="update">
+        UPDATE channel_permissions
+        SET can_read = #{canRead}, can_write = #{canWrite}, can_manage = #{canManage}
+        WHERE channel_id = #{channelId} AND user_id = #{userId}
+    </update>
+
+    <delete id="deleteByChannelAndUser">
+        DELETE FROM channel_permissions
+        WHERE channel_id = #{channelId} AND user_id = #{userId}
+    </delete>
+
+</mapper>

@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: absono-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-absono}
+      POSTGRES_USER: ${POSTGRES_USER:-absono}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-absono_secret}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U absono"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: absono-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: absono-livekit
+    restart: unless-stopped
+    depends_on:
+      - redis
+    network_mode: host
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+    command: ["--config", "/etc/livekit.yaml"]
+
+  garage:
+    image: dxflrs/garage:v2.3.0
+    container_name: absono-garage
+    restart: unless-stopped
+    ports:
+      - "${GARAGE_API_PORT:-3900}:3900"
+      - "${GARAGE_WEB_PORT:-3901}:3901"
+      - "${GARAGE_S3_PORT:-3902}:3902"
+      - "${GARAGE_S3_WEB_PORT:-3903}:3903"
+    volumes:
+      - garage_data:/var/lib/garage
+      - ./garage.toml:/etc/garage.toml
+    command: ["/garage", "-c", "/etc/garage.toml", "server"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  garage_data:

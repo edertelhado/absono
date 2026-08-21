@@ -1,0 +1,54 @@
+# === Segredos ===
+.env
+.env.local
+.env.*.local
+
+# === Backend (Spring Boot / Gradle) ===
+backend/.gradle/
+backend/build/
+backend/out/
+*.class
+
+# Wrapper do Gradle PRECISA ser versionado
+!gradle/wrapper/gradle-wrapper.jar
+
+# === Frontend (Vue/Vite) ===
+frontend/node_modules/
+frontend/dist/
+
+# === Desktop (Electron) ===
+desktop/node_modules/
+desktop/dist/
+desktop/release/
+
+# === Logs e temporários ===
+*.log
+tmp/
+.tmp/
+.cache/
+
+# === IDE / Editor ===
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# === Sistema operacional ===
+.DS_Store
+Thumbs.db
+
+# === Docker/Podman locais ===
+docker-compose.override.yml
+compose.override.yml
+
+# === Banco local ===
+*.db
+*.sqlite
+
+# === Certificados locais ===
+*.pem
+*.crt
+*.key
+!.vite/

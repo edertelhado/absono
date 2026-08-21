@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="br.com.absono.message.MessageMapper">
+
+    <resultMap id="MessageResultMap" type="br.com.absono.message.Message">
+        <id property="id" column="id"/>
+        <result property="channelId" column="channel_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="content" column="content"/>
+        <result property="replyToId" column="reply_to_id"/>
+        <result property="edited" column="edited"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="username" column="username"/>
+        <result property="displayName" column="display_name"/>
+        <result property="avatarUrl" column="avatar_url"/>
+        <result property="userStatus" column="user_status"/>
+    </resultMap>
+
+    <resultMap id="AttachmentResultMap" type="br.com.absono.message.MessageAttachment">
+        <id property="id" column="id"/>
+        <result property="messageId" column="message_id"/>
+        <result property="fileName" column="file_name"/>
+        <result property="mimeType" column="mime_type"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="s3Key" column="s3_key"/>
+        <result property="url" column="url"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="findByChannelId" resultMap="MessageResultMap">
+        SELECT m.id, m.channel_id, m.user_id, m.content, m.reply_to_id,
+               m.edited, m.created_at, m.updated_at,
+               u.username, u.display_name, u.avatar_url, u.status as user_status
+        FROM messages m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.channel_id = #{channelId}
+        ORDER BY m.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="searchByChannel" resultMap="MessageResultMap">
+        SELECT m.id, m.channel_id, m.user_id, m.content, m.reply_to_id,
+               m.edited, m.created_at, m.updated_at,
+               u.username, u.display_name, u.avatar_url, u.status as user_status
+        FROM messages m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.channel_id = #{channelId}
+          AND m.content ILIKE ('%' || #{query} || '%')
+        ORDER BY m.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findById" resultMap="MessageResultMap">
+        SELECT m.id, m.channel_id, m.user_id, m.content, m.reply_to_id,
+               m.edited, m.created_at, m.updated_at,
+               u.username, u.display_name, u.avatar_url, u.status as user_status
+        FROM messages m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.id = #{id}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO messages (id, channel_id, user_id, content, reply_to_id)
+        VALUES (#{id}, #{channelId}, #{userId}, #{content}, #{replyToId})
+    </insert>
+
+    <update id="updateContent">
+        UPDATE messages
+        SET content = #{content}, edited = true, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM messages WHERE id = #{id}
+    </delete>
+
+    <select id="countByChannelId" resultType="int">
+        SELECT COUNT(*) FROM messages WHERE channel_id = #{channelId}
+    </select>
+
+    <insert id="insertAttachment">
+        INSERT INTO message_attachments (id, message_id, file_name, mime_type, file_size, s3_key, url)
+        VALUES (#{id}, #{messageId}, #{fileName}, #{mimeType}, #{fileSize}, #{s3Key}, #{url})
+    </insert>
+
+    <select id="findAttachmentsByMessageId" resultMap="AttachmentResultMap">
+        SELECT id, message_id, file_name, mime_type, file_size, s3_key, url, created_at
+        FROM message_attachments WHERE message_id = #{messageId}
+    </select>
+
+    <select id="findAttachmentById" resultMap="AttachmentResultMap">
+        SELECT id, message_id, file_name, mime_type, file_size, s3_key, url, created_at
+        FROM message_attachments WHERE id = #{id}
+    </select>
+
+    <delete id="deleteAttachment">
+        DELETE FROM message_attachments WHERE id = #{id}
+    </delete>
+
+</mapper>

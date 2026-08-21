@@ -1,0 +1,24 @@
+{
+	# ACME usa as portas 80/443 expostas pelo container
+	email {$ACME_EMAIL:admin@example.com}
+}
+
+# App principal: frontend (nginx) que por sua vez proxia /api e /ws ao backend.
+# O LiveKit (sinalizacao WebSocket) fica montado em /livekit com prefixo removido.
+{$PUBLIC_APP_DOMAIN} {
+	encode gzip zstd
+
+	handle_path /livekit/* {
+		reverse_proxy livekit:7880
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+# Endpoint S3 do Garage. O Host original PRECISA ser preservado (assinatura SigV4),
+# e o Caddy repassa o Host recebido por padrao.
+{$PUBLIC_S3_DOMAIN} {
+	reverse_proxy garage:3902
+}

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="br.com.absono.channel.ChannelMapper">
+
+    <resultMap id="ChannelResultMap" type="br.com.absono.channel.Channel">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="type" column="type"/>
+        <result property="description" column="description"/>
+        <result property="position" column="position"/>
+        <result property="active" column="active"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="ChannelResultMap">
+        SELECT id, name, type, description, "position", active, created_by, created_at, updated_at
+        FROM channels ORDER BY "position", name
+    </select>
+
+    <select id="findById" resultMap="ChannelResultMap">
+        SELECT id, name, type, description, "position", active, created_by, created_at, updated_at
+        FROM channels WHERE id = #{id}
+    </select>
+
+    <select id="findByName" resultMap="ChannelResultMap">
+        SELECT id, name, type, description, "position", active, created_by, created_at, updated_at
+        FROM channels WHERE name = #{name}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO channels (id, name, type, description, "position", active, created_by)
+        VALUES (#{id}, #{name}, #{type}, #{description}, #{position}, #{active}, #{createdBy})
+    </insert>
+
+    <update id="update">
+        UPDATE channels
+        SET name = #{name}, type = #{type}, description = #{description},
+            "position" = #{position}, active = #{active}, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM channels WHERE id = #{id}
+    </delete>
+
+    <select id="getMaxPosition" resultType="java.lang.Integer">
+        SELECT MAX("position") FROM channels
+    </select>
+
+    <update id="updatePosition">
+        UPDATE channels SET "position" = #{position}, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>
