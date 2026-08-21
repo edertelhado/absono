@@ -1,6 +1,6 @@
 # Stack completa para VPS — sobe com: docker compose -f compose.prod.yml up -d --build
-# URLs públicas (o que os navegadores dos 2 PCs vão acessar) vêm do .env:
-#   PUBLIC_LIVEKIT_URL e PUBLIC_S3_ENDPOINT
+# URLs públicas derivam de PUBLIC_APP_DOMAIN e PUBLIC_S3_DOMAIN definidos no .env
+# (Caddy emite o TLS via sslip.io ou domínio próprio).
 
 services:
   postgres:

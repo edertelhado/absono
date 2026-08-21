@@ -176,28 +176,45 @@ pode reduzir a qualidade recebida no seletor do spotlight.
 
 ## Deploy em VPS
 
-A stack completa sobe com Docker Compose usando `compose.prod.yml`:
-PostgreSQL, Redis, Garage, LiveKit, backend (imagem própria) e frontend
-(nginx servindo o build e fazendo proxy de `/api` e `/ws`).
+A stack completa sobe com `compose.prod.yml`:
 
-### 1. Copiar o projeto e configurar URLs
+```
+Internet ──► Caddy (:80/:443, TLS automático)
+              ├── seu-dominio.sslip.io
+              │     ├── /            → frontend (nginx: SPA + proxy /api e /ws → backend)
+              │     └── /livekit/*   → LiveKit (sinalização wss)
+              └── s3.seu-dominio.sslip.io → Garage (downloads/mídia presignados)
+```
+
+- **Caddy** é a porta de entrada: emite certificado Let's Encrypt sozinho
+  (funciona **sem domínio próprio**, usando nomes `sslip.io` derivados do IP).
+- **nginx** roda *dentro* do container de frontend (`frontend/Dockerfile`),
+  servindo o build do Vue e fazendo proxy interno de `/api` e `/ws` ao backend —
+  ele não tem porta pública; só o Caddy fala com ele.
+- Backend, Postgres, Redis e LiveKit ficam na rede interna do compose.
+
+### 1. Clonar e configurar
 
 ```bash
-rsync -avz --exclude node_modules --exclude .gradle --exclude build ./ vps:~/discord_clone/
-ssh vps
-cd ~/discord_clone
+git clone https://github.com/edertelhado/absono.git && cd absono
 cp .env.example .env
 ```
 
-Edite o `.env` — só estas variáveis precisam mudar:
+Edite o `.env` — se o IP da VPS for `201.71.20.54`:
 
 | Variável | Exemplo | Para que serve |
 |---|---|---|
-| `PUBLIC_LIVEKIT_URL` | `ws://SEU_IP:7880` | URL do LiveKit usada pelos navegadores |
-| `PUBLIC_S3_ENDPOINT` | `http://SEU_IP:3902` | Endpoint S3 embutido nas URLs presignadas |
+| `PUBLIC_APP_DOMAIN` | `201-71-20-54.sslip.io` | Domínio do app (Caddy emite o TLS dele) |
+| `PUBLIC_S3_DOMAIN` | `s3.201-71-20-54.sslip.io` | Domínio do S3 (assinatura SigV4 das URLs) |
 | `JWT_SECRET` | `openssl rand -base64 48` | Segredo dos tokens da aplicação |
+| `ACME_EMAIL` | seu e-mail | Avisos do Let's Encrypt (opcional) |
 
-Com domínio + TLS, use `wss://dominio/livekit` atrás de um proxy.
+`LIVEKIT_URL` (`wss://…/livekit`) e `GARAGE_ENDPOINT` (`https://s3.…`) são
+derivados automaticamente desses domínios. Com domínio próprio, use-o no lugar
+do sslip.io.
+
+> Requisito: portas **80 e 443** acessíveis da internet durante a primeira
+> subida, para o desafio do Let's Encrypt.
 
 ### 2. Subir a stack
 
@@ -205,7 +222,7 @@ Com domínio + TLS, use `wss://dominio/livekit` atrás de um proxy.
 docker compose -f compose.prod.yml up -d --build
 ```
 
-O compose falha rápido se `PUBLIC_LIVEKIT_URL`, `PUBLIC_S3_ENDPOINT` ou
+O compose falha rápido se `PUBLIC_APP_DOMAIN`, `PUBLIC_S3_DOMAIN` ou
 `JWT_SECRET` não estiverem definidos — é intencional.
 
 ### 3. Inicializar o Garage (só na primeira vez)
@@ -220,17 +237,18 @@ O script importa a chave do `.env` e cria o bucket, de forma idempotente.
 
 | Porta | Protocolo | Serviço |
 |---|---|---|
-| 80 | tcp | Frontend (nginx) |
-| 7880 | tcp | LiveKit — sinalização |
-| 7881 | tcp | LiveKit — fallback ICE/TCP |
-| 50000-50100 | udp | LiveKit — mídia WebRTC |
-| 3902 | tcp | Garage — downloads/mídia |
+| 80 | tcp | Caddy — desafio ACME |
+| 443 | tcp+udp | Caddy — app HTTPS e HTTP/3 |
+| 50000-50100 | udp | LiveKit — mídia WebRTC (direto, não passa pelo Caddy) |
+
+Tudo o mais (nginx, backend, Postgres, Redis, Garage API, sinalização 7880)
+fica atrás do Caddy ou na rede interna — não abra portas extras.
+Opcionalmente libere `7881/tcp` como fallback ICE/TCP do LiveKit.
 
 ### 5. Acessar
 
-Abra `http://SEU_IP` nos navegadores. Postgres/Redis/Garage-admin/LiveKit-interno
-**não** ficam expostos além do necessário; o backend conversa com eles pela rede
-interna do compose.
+Abra `https://SEU-DOMINIO.sslip.io` nos navegadores (o cadeado verde indica o
+certificado emitido). Mic/câmera funcionam por ser um contexto seguro.
 
 > **Nota:** na VPS o LiveKit usa rede bridge + `use_external_ip: true`
 > (`livekit.prod.yaml`) — diferente do dev, onde usamos rede host porque os
