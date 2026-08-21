@@ -1,0 +1,28 @@
+{
+	email {$ACME_EMAIL:admin@example.com}
+}
+
+# Desafio DNS-01 via DuckDNS — nao precisa das portas 80/443 publicas.
+{$PUBLIC_APP_DOMAIN} {
+	tls {
+		dns duckdns {$DUCKDNS_TOKEN}
+		resolvers 1.1.1.1 8.8.8.8
+	}
+	encode gzip zstd
+
+	handle_path /livekit/* {
+		reverse_proxy livekit:7880
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+{$PUBLIC_S3_DOMAIN} {
+	tls {
+		dns duckdns {$DUCKDNS_TOKEN}
+		resolvers 1.1.1.1 8.8.8.8
+	}
+	reverse_proxy garage:3902
+}

@@ -68,11 +68,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-absono_secret}
       REDIS_HOST: redis
       JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no .env}
-      LIVEKIT_URL: "wss://${PUBLIC_APP_DOMAIN}/livekit"
+      LIVEKIT_URL: "wss://${PUBLIC_APP_DOMAIN}:${HTTPS_PORT:-443}/livekit"
       LIVEKIT_INTERNAL_URL: http://livekit:7880
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-absono-livekit-dev-secret-32-chars!!}
-      GARAGE_ENDPOINT: "https://${PUBLIC_S3_DOMAIN}"
+      GARAGE_ENDPOINT: "https://${PUBLIC_S3_DOMAIN}:${HTTPS_PORT:-443}"
       GARAGE_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-garage_access_key}
       GARAGE_SECRET_KEY: ${GARAGE_SECRET_KEY:-garage_secret_key}
       GARAGE_BUCKET: ${GARAGE_BUCKET:-absono}
@@ -94,15 +94,16 @@ services:
       - livekit
       - garage
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
     environment:
       PUBLIC_APP_DOMAIN: ${PUBLIC_APP_DOMAIN:?Defina PUBLIC_APP_DOMAIN no .env - ex 201-71-20-54.sslip.io}
       PUBLIC_S3_DOMAIN: ${PUBLIC_S3_DOMAIN:?Defina PUBLIC_S3_DOMAIN no .env - ex s3.201-71-20-54.sslip.io}
       ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:-}
     volumes:
-      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - ${CADDYFILE:-./Caddyfile.prod}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
 

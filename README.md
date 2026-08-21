@@ -267,6 +267,45 @@ certificado emitido). Mic/câmera funcionam por ser um contexto seguro.
 > (`livekit.prod.yaml`) — diferente do dev, onde usamos rede host porque os
 > clientes estão na mesma LAN.
 
+### Alternativa: VPS com portas 80/443 bloqueadas (DuckDNS)
+
+Se a provedora bloqueia as portas padrão, use **DuckDNS + desafio DNS-01**:
+o certificado é validado por registro TXT no DNS, então **nenhuma porta de
+desafio é necessária** — só a HTTPS alternativa (4432).
+
+1. No painel do [DuckDNS](https://www.duckdns.org) registre **dois nomes**
+   na sua conta: `absono` e `absono-s3` (o S3 precisa de nome próprio porque
+   o DuckDNS não tem sub-subdomínios).
+
+2. No `.env`:
+
+   ```bash
+   PUBLIC_APP_DOMAIN=absono.duckdns.org
+   PUBLIC_S3_DOMAIN=absono-s3.duckdns.org
+   DUCKDNS_TOKEN=seu-token
+   DUCKDNS_DOMAINS=absono,absono-s3
+   HTTP_PORT=8081
+   HTTPS_PORT=4432
+   CADDYFILE=./Caddyfile.duck
+   ```
+
+3. Suba com os dois arquivos:
+
+   ```bash
+   docker compose -f compose.prod.yml -f compose.duck.yaml up -d --build
+   ```
+
+O que muda nesse modo:
+- O Caddy roda numa imagem própria com o plugin
+  [`caddy-dns/duckdns`](https://github.com/caddy-dns/duckdns)
+  (`caddy/Dockerfile`) e valida o domínio via TXT record.
+- Um sidecar (`duckdns-updater`) renova o apontamento do IP a cada 5 minutos
+  para os dois domínios — ideal para IP dinâmico.
+- URLs finais incluem a porta: `https://absono.duckdns.org:4432`,
+  `wss://…:4432/livekit` e `https://absono-s3.duckdns.org:4432`.
+
+Firewall: abra apenas `4432/tcp` (e mantenha `50000-50100/udp` da mídia).
+
 ## Configuração
 
 ### LiveKit

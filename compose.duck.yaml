@@ -1,0 +1,39 @@
+# Modo DuckDNS — portas 80/443 bloqueadas na VPS.
+#
+# Uso (SEMPRE junto com o compose.prod.yml):
+#   docker compose -f compose.prod.yml -f compose.duck.yaml up -d --build
+#
+# Requisitos no .env:
+#   DUCKDNS_TOKEN=seu-token
+#   PUBLIC_APP_DOMAIN=absono.duckdns.org
+#   PUBLIC_S3_DOMAIN=absono-s3.duckdns.org   <- registre 'absono-s3' no painel DuckDNS
+#   HTTP_PORT=8081
+#   HTTPS_PORT=4432
+#   CADDYFILE=./Caddyfile.duck
+#
+# URLs resultantes:
+#   App:     https://absono.duckdns.org:4432
+#   LiveKit: wss://absono.duckdns.org:4432/livekit
+#   S3:      https://absono-s3.duckdns.org:4432
+#
+# O desafio do certificado e DNS-01 (registro TXT no DuckDNS), portanto as
+# portas 80/443 NAO precisam estar abertas — apenas a 4432/tcp.
+
+services:
+  caddy:
+    image: absono-caddy-duckdns:local
+    build:
+      context: ./caddy
+
+  duckdns-updater:
+    image: alpine:3.20
+    container_name: absono-duckdns-updater
+    restart: unless-stopped
+    environment:
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:?Defina DUCKDNS_TOKEN no .env}
+      DUCKDNS_DOMAINS: ${DUCKDNS_DOMAINS:?Defina DUCKDNS_DOMAINS no .env - ex absono,absono-s3}
+    command: >
+      sh -c 'while true; do
+        wget -qO /dev/null -T 15 "https://www.duckdns.org/update?domains=$$DUCKDNS_DOMAINS&token=$$DUCKDNS_TOKEN&ip=" || true;
+        sleep 300;
+      done'
