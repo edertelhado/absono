@@ -65,6 +65,15 @@ class JwtUtil {
         }
     }
 
+    boolean isRefreshToken(String token) {
+        try {
+            Claims claims = parseToken(token)
+            return claims?.get('type') == 'refresh'
+        } catch (JwtException | IllegalArgumentException e) {
+            return false
+        }
+    }
+
     private Claims parseToken(String token) {
         Jwts.parser()
             .verifyWith(getKey())

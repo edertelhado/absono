@@ -29,11 +29,21 @@ class AuthController {
         ResponseEntity.ok(response)
     }
 
+    @PostMapping('/refresh')
+    ResponseEntity<?> refresh(@RequestBody @Valid RefreshRequest request) {
+        ResponseEntity.ok(authService.refresh(request.refreshToken))
+    }
+
     @PostMapping('/logout')
     ResponseEntity<?> logout() {
         authService.logout()
         ResponseEntity.ok([success: true, message: 'Logout realizado com sucesso'])
     }
+}
+
+class RefreshRequest {
+    @NotBlank(message = 'Refresh token é obrigatório')
+    String refreshToken
 }
 
 class RegisterRequest {

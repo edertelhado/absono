@@ -76,6 +76,23 @@ class AuthService {
         )
     }
 
+    AuthResponse refresh(String refreshToken) {
+        if (!refreshToken || !jwtUtil.validateToken(refreshToken) || !jwtUtil.isRefreshToken(refreshToken)) {
+            throw new AuthException('Refresh token inválido ou expirado')
+        }
+
+        def user = userMapper.findById(jwtUtil.getUserId(refreshToken))
+        if (!user) {
+            throw new AuthException('Usuário não encontrado')
+        }
+
+        new AuthResponse(
+            accessToken: jwtUtil.generateToken(user.id, user.username),
+            refreshToken: refreshToken,
+            user: toResponse(user)
+        )
+    }
+
     void logout() {
         Authentication auth = SecurityContextHolder.context.authentication
         String userId = auth?.name

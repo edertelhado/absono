@@ -17,14 +17,49 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+let refreshPromise: Promise<string | null> | null = null
+
+async function doRefresh(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('absono_refresh')
+  if (!refreshToken) return null
+  try {
+    const response = await axios.post('/api/auth/refresh', { refreshToken })
+    const data = response.data as AuthResponse
+    localStorage.setItem('absono_token', data.accessToken)
+    return data.accessToken
+  } catch {
+    localStorage.removeItem('absono_token')
+    localStorage.removeItem('absono_refresh')
+    router.push('/login')
+    return null
+  }
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const config = error.config ?? {}
+    const status = error.response?.status
+    const isAuthCall = typeof config.url === 'string' && config.url.includes('/auth/')
+
+    if (status === 401 && !isAuthCall && !config._retried) {
+      config._retried = true
+      refreshPromise = refreshPromise ?? doRefresh().finally(() => {
+        refreshPromise = null
+      })
+      const newToken = await refreshPromise
+      if (newToken) {
+        config.headers.Authorization = `Bearer ${newToken}`
+        return api(config)
+      }
+    }
+
+    if (status === 401 && !isAuthCall) {
       localStorage.removeItem('absono_token')
       localStorage.removeItem('absono_refresh')
       router.push('/login')
     }
+
     return Promise.reject(error)
   }
 )
@@ -38,6 +73,15 @@ export const authService = {
   async register(username: string, displayName: string, password: string): Promise<AuthResponse> {
     const response = await api.post('/auth/register', { username, displayName, password })
     return response.data
+  },
+
+  async refresh(): Promise<AuthResponse> {
+    // usa axios cru para não passar pelo interceptor de 401
+    const refreshToken = localStorage.getItem('absono_refresh') || ''
+    const response = await axios.post('/api/auth/refresh', { refreshToken })
+    const data = response.data as AuthResponse
+    localStorage.setItem('absono_token', data.accessToken)
+    return data
   },
 
   async logout(): Promise<void> {

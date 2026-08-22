@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, shallowRef, computed } from 'vue'
+import { ref, shallowRef, computed, watch } from 'vue'
 import type { RemoteParticipant, LocalParticipant, RemoteVideoTrack, LocalVideoTrack, LocalAudioTrack } from 'livekit-client'
 import { Room, RoomEvent, Track, VideoQuality } from 'livekit-client'
 import { KrispNoiseFilter, isKrispNoiseFilterSupported } from '@livekit/krisp-noise-filter'
@@ -41,6 +41,39 @@ export const useVoiceStore = defineStore('voice', () => {
   const activeSpeakers = ref<Set<string>>(new Set())
   const screenWatchers = ref<string[]>([])
 
+  // ===== Preferências persistentes (localStorage) =====
+  const SETTINGS_KEY = 'absono_voice_settings'
+
+  function loadVoiceSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')
+      selectedAudioInput.value = s.audioInput || ''
+      selectedAudioOutput.value = s.audioOutput || ''
+      selectedVideoInput.value = s.videoInput || ''
+      if (s.shareResolution) screenShareResolution.value = s.shareResolution
+      if (s.shareFps) screenShareFPS.value = s.shareFps
+      noiseSuppression.value = !!s.noiseSuppression
+    } catch {
+      // configurações corrompidas — segue com defaults
+    }
+  }
+
+  loadVoiceSettings()
+
+  watch(
+    [selectedAudioInput, selectedAudioOutput, selectedVideoInput, screenShareResolution, screenShareFPS, noiseSuppression],
+    () => {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+        audioInput: selectedAudioInput.value,
+        audioOutput: selectedAudioOutput.value,
+        videoInput: selectedVideoInput.value,
+        shareResolution: screenShareResolution.value,
+        shareFps: screenShareFPS.value,
+        noiseSuppression: noiseSuppression.value,
+      }))
+    }
+  )
+
   const textEncoder = new TextEncoder()
   const textDecoder = new TextDecoder()
 
@@ -66,7 +99,6 @@ export const useVoiceStore = defineStore('voice', () => {
     isCameraEnabled.value = false
     isScreenSharing.value = false
     mediaToggling.value = false
-    noiseSuppression.value = false
     revision.value++
   }
 
@@ -225,6 +257,20 @@ export const useVoiceStore = defineStore('voice', () => {
 
       await lkRoom.connect(serverUrl, token)
       room.value = lkRoom
+      touch()
+
+      // Habilita o microfone na entrada — dispara o pedido de permissão
+      // do navegador. Se negado/ausente, entra mudo sem quebrar a chamada.
+      try {
+        await lkRoom.localParticipant.setMicrophoneEnabled(true, selectedAudioInput.value ? { deviceId: selectedAudioInput.value } : undefined)
+        isMicrophoneEnabled.value = true
+        if (noiseSuppression.value) {
+          void applyNoiseSuppressionIfEnabled()
+        }
+      } catch (e) {
+        console.warn('Microfone não habilitado automaticamente:', (e as Error)?.message || e)
+      }
+
       touch()
 
       await enumerateDevices()

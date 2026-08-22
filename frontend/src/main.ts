@@ -6,16 +6,23 @@ import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from './stores/useAuthStore'
 import './styles/main.scss'
 
 const app = createApp(App)
+const pinia = createPinia()
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
 
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { size: 'default' })
 
-app.mount('#app')
+// restaura a sessão (com refresh se necessário) antes de montar,
+// para o guard de rota decidir com o usuário já carregado
+const authStore = useAuthStore()
+authStore.init().catch(() => {}).finally(() => {
+  app.mount('#app')
+})
