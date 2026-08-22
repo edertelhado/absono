@@ -40,6 +40,9 @@
         UPDATE users SET status = #{status}, updated_at = NOW()
         WHERE id = #{id}
     </update>
+    <update id="markAllOffline">
+        UPDATE users SET status = 'OFFLINE', updated_at = NOW() WHERE status != 'OFFLINE'
+    </update>
 
     <update id="updateRole">
         UPDATE users SET role = #{role}, updated_at = NOW()

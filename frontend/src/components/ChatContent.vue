@@ -201,11 +201,18 @@ function scrollToBottom() {
   }
 }
 
-function handleScroll() {
-  if (!messagesContainer.value) return
-  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
-  if (scrollTop < 100 && hasMore.value && !loading.value) {
-    chatStore.loadMoreMessages()
+async function handleScroll() {
+  const el = messagesContainer.value
+  if (!el) return
+  const { scrollTop } = el
+  if (scrollTop > 120 || !hasMore.value || loading.value) return
+
+  // preserva a posição visual ao inserir mensagens mais antigas acima
+  const prevHeight = el.scrollHeight
+  await chatStore.loadMoreMessages()
+  await nextTick()
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight - prevHeight + scrollTop
   }
 }
 
@@ -339,10 +346,6 @@ onBeforeUnmount(() => {
       <div v-if="loading && messages.length === 0" class="loading-state">
         <el-icon class="is-loading"><Loading /></el-icon>
         <span>Carregando mensagens...</span>
-      </div>
-
-      <div v-if="hasMore && !loading" class="load-more">
-        <el-button text @click="chatStore.loadMoreMessages">Carregar mais</el-button>
       </div>
 
       <div

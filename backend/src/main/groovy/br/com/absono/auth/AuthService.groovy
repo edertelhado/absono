@@ -97,8 +97,7 @@ class AuthService {
         Authentication auth = SecurityContextHolder.context.authentication
         String userId = auth?.name
         if (userId) {
-            userMapper.updateStatus(userId, UserStatus.OFFLINE.toString())
-            presenceService.broadcastStatus(userId, UserStatus.OFFLINE.toString())
+            presenceService.forceOffline(userId)
         }
     }
 

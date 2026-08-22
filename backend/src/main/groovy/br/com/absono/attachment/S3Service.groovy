@@ -6,10 +6,13 @@ import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.core.ResponseInputStream
+import software.amazon.awssdk.services.s3.model.GetObjectResponse
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 import software.amazon.awssdk.services.s3.presigner.S3Presigner
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest
 
 import java.time.Duration
@@ -42,23 +45,6 @@ class S3Service {
         return key
     }
 
-    String getPresignedUrl(String key, Duration duration, String contentDisposition) {
-        GetObjectRequest.Builder getBuilder = GetObjectRequest.builder()
-            .bucket(bucket)
-            .key(key)
-
-        if (contentDisposition) {
-            getBuilder.responseContentDisposition(contentDisposition)
-        }
-
-        PresignedGetObjectRequest presignRequest = s3Presigner.presignGetObject(req -> {
-            req.getObjectRequest(getBuilder.build())
-            req.signatureDuration(duration)
-        })
-
-        return presignRequest.url().toString()
-    }
-
     String getPresignedUploadUrl(String key, Duration duration, String contentType) {
         PutObjectRequest putRequest = PutObjectRequest.builder()
             .bucket(bucket)
@@ -72,6 +58,30 @@ class S3Service {
         })
 
         return presignUploadRequest.url().toString()
+    }
+
+    HeadObjectResponse head(String key) {
+        s3Client.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build())
+    }
+
+    ResponseInputStream<GetObjectResponse> getObject(long startInclusive, long endInclusive) {
+        throw new UnsupportedOperationException()
+    }
+
+    ResponseInputStream<GetObjectResponse> getObject(String key, Long startInclusive, Long endInclusive) {
+        def builder = GetObjectRequest.builder().bucket(bucket).key(key)
+        if (startInclusive != null && endInclusive != null) {
+            builder.range("bytes=${startInclusive}-${endInclusive}")
+        } else if (startInclusive != null) {
+            builder.range("bytes=${startInclusive}-")
+        }
+        s3Client.getObject(builder.build())
+    }
+
+    void withStream(String key, Long start, Long end, Closure consumer) {
+        (getObject(key, start, end) as ResponseInputStream<GetObjectResponse>).withCloseable { inStream ->
+            consumer.call(inStream)
+        }
     }
 
     void deleteFile(String key) {

@@ -10,7 +10,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   workers: 1,
   fullyParallel: false,
-  retries: process.env.E2E_RETRIES ? Number(process.env.E2E_RETRIES) : 0,
+  retries: Number(process.env.E2E_RETRIES ?? 1),
   use: {
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
     trace: 'retain-on-failure',

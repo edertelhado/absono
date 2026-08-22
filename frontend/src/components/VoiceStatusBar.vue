@@ -17,6 +17,8 @@ const visible = computed(() =>
   !!voiceStore.joinedChannelId && voiceStore.joinedChannelId !== channelStore.currentChannel?.id
 )
 
+const watcherCount = computed(() => voiceStore.screenWatchers.length)
+
 const participantCount = computed(() => {
   const serverSide = voiceStateStore.participantsByChannel[voiceStore.joinedChannelId ?? '']?.length ?? 0
   return Math.max(serverSide, voiceStore.participants.length + 1)
@@ -56,6 +58,9 @@ async function toggleScreenShare() {
       <span v-if="voiceStore.isScreenSharing" class="vsb-sharing">
         <el-icon><Monitor /></el-icon>
         transmitindo
+        <span v-if="watcherCount > 0" class="vsb-watchers">
+          · {{ watcherCount }} assistindo
+        </span>
       </span>
     </span>
 
@@ -140,6 +145,10 @@ async function toggleScreenShare() {
   background: var(--absono-surface-2);
   border-radius: 9999px;
   padding: 1px 8px;
+}
+
+.vsb-watchers {
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .vsb-sharing {

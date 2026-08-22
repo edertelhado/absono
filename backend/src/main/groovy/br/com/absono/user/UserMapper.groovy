@@ -16,6 +16,8 @@ interface UserMapper {
 
     int updateStatus(@Param('id') String id, @Param('status') String status)
 
+    int markAllOffline()
+
     int updateRole(@Param('id') String id, @Param('role') String role)
 
     List<User> findAll()
