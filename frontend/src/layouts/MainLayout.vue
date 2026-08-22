@@ -15,6 +15,7 @@ import ChannelSidebar from '@/components/ChannelSidebar.vue'
 import ChatContent from '@/components/ChatContent.vue'
 import UserSidebar from '@/components/UserSidebar.vue'
 import CallPanel from '@/components/CallPanel.vue'
+import VoiceStatusBar from '@/components/VoiceStatusBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -128,6 +129,8 @@ function openSettings() {
       <ChatContent v-if="channelStore.currentChannel?.type === 'TEXT'" />
 
       <CallPanel v-else-if="channelStore.currentChannel?.type === 'VOICE'" />
+
+      <VoiceStatusBar />
     </div>
 
     <UserSidebar />

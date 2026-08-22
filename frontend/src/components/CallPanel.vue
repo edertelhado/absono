@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import type { RemoteParticipant, RemoteVideoTrack, LocalVideoTrack, RemoteAudioTrack } from 'livekit-client'
+import type { RemoteParticipant, RemoteVideoTrack, LocalVideoTrack } from 'livekit-client'
 import { VideoQuality } from 'livekit-client'
 import { useChannelStore } from '@/stores/useChannelStore'
 import { useVoiceStore } from '@/stores/useVoiceStore'
@@ -33,12 +33,6 @@ interface ScreenShareInfo {
   name: string
   isOwn: boolean
   track: RemoteVideoTrack | LocalVideoTrack
-}
-
-interface AudioEntry {
-  key: string
-  identity: string
-  track: RemoteAudioTrack
 }
 
 const tiles = computed<Tile[]>(() => {
@@ -110,55 +104,7 @@ watch(watcherNames, (now, prev) => {
   }
 })
 
-const remoteAudioTracks = computed<AudioEntry[]>(() => {
-  void voiceStore.revision
-  const out: AudioEntry[] = []
-  for (const p of voiceStore.participants as RemoteParticipant[]) {
-    for (const pub of Array.from(p.audioTrackPublications.values())) {
-      const track = pub.audioTrack as RemoteAudioTrack | undefined
-      if (pub.isSubscribed && track) {
-        out.push({ key: pub.trackSid, identity: p.identity, track })
-      }
-    }
-  }
-  return out
-})
-
-// ===== Volume por participante + abafar (deafen) =====
-
-const volumes = ref<Record<string, number>>({})
-const deafened = ref(false)
-
-function volumeFor(identity: string): number {
-  return volumes.value[identity] ?? 100
-}
-
-function effectiveVolume(identity: string): number {
-  return deafened.value ? 0 : volumeFor(identity)
-}
-
-function setVolume(identity: string, v: number) {
-  volumes.value = { ...volumes.value, [identity]: v }
-  applyVolumes()
-}
-
-function toggleDeafen() {
-  deafened.value = !deafened.value
-  applyVolumes()
-}
-
-function applyVolumes() {
-  for (const entry of remoteAudioTracks.value) {
-    try {
-      entry.track.setVolume(effectiveVolume(entry.identity) / 100)
-    } catch {
-      // track pode ter sido despublicada no meio do ajuste
-    }
-  }
-}
-
 const videoEls = new Map<string, HTMLVideoElement>()
-const audioEls = new Map<string, HTMLMediaElement>()
 let spotlightVideoEl: HTMLVideoElement | null = null
 
 function bindVideo(el: unknown, key: string, track: RemoteVideoTrack | LocalVideoTrack | null | undefined) {
@@ -181,33 +127,6 @@ function bindSpotlight(el: unknown, entry: ScreenShareInfo) {
   spotlightVideoEl = el as HTMLVideoElement | null
 }
 
-function bindAudio(el: unknown, entry: AudioEntry) {
-  const media = el as HTMLAudioElement | null
-  if (!media) return
-  audioEls.set(entry.key, media)
-  const current = (media as any).__lkTrack as RemoteAudioTrack | undefined
-  if (current === entry.track) return
-  current?.detach(media)
-  entry.track.attach(media)
-  ;(media as any).__lkTrack = entry.track
-  applySinkId(media)
-  try {
-    entry.track.setVolume(effectiveVolume(entry.identity) / 100)
-  } catch {
-    // track pode não suportar ajuste ainda
-  }
-}
-
-async function applySinkId(media: HTMLMediaElement) {
-  const deviceId = voiceStore.selectedAudioOutput
-  if (!deviceId || typeof (media as any).setSinkId !== 'function') return
-  try {
-    await (media as any).setSinkId(deviceId)
-  } catch {
-    // dispositivo inválido — mantém saída padrão
-  }
-}
-
 function detachStale() {
   for (const [key, el] of videoEls) {
     if (!el.isConnected) {
@@ -216,28 +135,17 @@ function detachStale() {
       videoEls.delete(key)
     }
   }
-  for (const [key, el] of audioEls) {
-    if (!el.isConnected) {
-      const t = (el as any).__lkTrack as RemoteAudioTrack | undefined
-      t?.detach(el)
-      audioEls.delete(key)
-    }
-  }
 }
 
-watch([tiles, screenShare, remoteAudioTracks], () => {
+watch([tiles, screenShare], () => {
   nextTick(detachStale)
 })
 
-watch(() => voiceStore.selectedAudioOutput, async () => {
-  await nextTick()
-  for (const el of audioEls.values()) {
-    await applySinkId(el)
-  }
-})
-
 watch(() => channel.value?.id, (id) => {
-  if (voiceStore.joinedChannelId && id !== voiceStore.joinedChannelId) {
+  const ch = channel.value
+  // só troca de sala ao navegar entre canais de VOZ; canais de texto
+  // mantêm a chamada e o compartilhamento ativos
+  if (ch?.type === 'VOICE' && voiceStore.joinedChannelId && id !== voiceStore.joinedChannelId) {
     voiceStore.disconnect()
     pinnedIdentity.value = null
   }
@@ -248,16 +156,8 @@ onUnmounted(() => {
     const t = (el as any).__lkTrack as RemoteVideoTrack | LocalVideoTrack | undefined
     t?.detach(el)
   }
-  for (const el of audioEls.values()) {
-    const t = (el as any).__lkTrack as RemoteAudioTrack | undefined
-    t?.detach(el)
-  }
   videoEls.clear()
-  audioEls.clear()
   spotlightVideoEl = null
-  if (voiceStore.connected) {
-    voiceStore.disconnect()
-  }
 })
 
 function togglePin(tile: Tile) {
@@ -267,6 +167,13 @@ function togglePin(tile: Tile) {
 const pipSupported = computed(() =>
   typeof document !== 'undefined' && 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled
 )
+
+// delegações à store (áudio remoto vive fora deste componente)
+const volumeFor = (identity: string) => voiceStore.volumeFor(identity)
+const effectiveVolume = (identity: string) => (voiceStore.deafened ? 0 : voiceStore.volumeFor(identity))
+const setVolume = (identity: string, v: number) => voiceStore.setVolume(identity, v)
+const toggleDeafen = () => voiceStore.toggleDeafen()
+const deafened = computed(() => voiceStore.deafened)
 
 async function togglePip() {
   const el = spotlightVideoEl
@@ -391,15 +298,6 @@ async function toggleFullscreen() {
       </div>
 
       <div v-else class="call-active">
-        <div class="remote-audio" aria-hidden="true">
-          <audio
-            v-for="entry in remoteAudioTracks"
-            :key="entry.key"
-            :ref="(el) => bindAudio(el, entry)"
-            autoplay
-          ></audio>
-        </div>
-
         <div v-if="voiceStore.reconnecting" class="reconnect-overlay">
           <el-icon class="is-loading" :size="28"><Loading /></el-icon>
           <span>Reconectando à chamada...</span>
@@ -527,8 +425,7 @@ async function toggleFullscreen() {
             size="large"
             @click="toggleDeafen"
             :title="deafened ? 'Desabafar' : 'Abafar (silenciar todos)'"
-          >
-            <el-icon><Headset v-if="!deafened" /><Mute v-else /></el-icon>
+          >            <el-icon><Headset v-if="!deafened" /><Mute v-else /></el-icon>
           </el-button>
 
           <el-button

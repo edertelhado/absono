@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef, computed, watch } from 'vue'
-import type { RemoteParticipant, LocalParticipant, RemoteVideoTrack, LocalVideoTrack, LocalAudioTrack } from 'livekit-client'
+import type { RemoteParticipant, LocalParticipant, RemoteVideoTrack, LocalVideoTrack, LocalAudioTrack, RemoteAudioTrack } from 'livekit-client'
 import { Room, RoomEvent, Track, VideoQuality } from 'livekit-client'
 import { KrispNoiseFilter, isKrispNoiseFilterSupported } from '@livekit/krisp-noise-filter'
 import type { KrispNoiseFilterProcessor } from '@livekit/krisp-noise-filter'
@@ -40,6 +40,94 @@ export const useVoiceStore = defineStore('voice', () => {
   const localScreenShareTrack = shallowRef<LocalVideoTrack | null>(null)
   const activeSpeakers = ref<Set<string>>(new Set())
   const screenWatchers = ref<string[]>([])
+
+  // ===== Volume por participante + abafar =====
+  const volumes = ref<Record<string, number>>({})
+  const deafened = ref(false)
+
+  // Elementos de áudio remoto presos ao <body> — sobrevivem à navegação
+  // entre views (CallPanel desmonta, a chamada continua).
+  const remoteAudioEls = new Map<string, HTMLAudioElement>()
+
+  function effectiveVolume(identity: string): number {
+    return deafened.value ? 0 : (volumes.value[identity] ?? 100) / 100
+  }
+
+  function applyVolumeToEl(el: HTMLAudioElement) {
+    const track = (el as any).__lkTrack as RemoteAudioTrack | undefined
+    const identity = (el as any).__identity as string
+    try {
+      track?.setVolume(effectiveVolume(identity))
+    } catch {
+      // track pode ter sido despublicada no meio do ajuste
+    }
+  }
+
+  function syncRemoteAudio() {
+    const wanted = new Map<string, { track: RemoteAudioTrack; identity: string }>()
+    for (const p of participants.value as RemoteParticipant[]) {
+      for (const pub of Array.from(p.audioTrackPublications.values())) {
+        const track = pub.audioTrack as RemoteAudioTrack | undefined
+        if (pub.isSubscribed && track) {
+          wanted.set(pub.trackSid, { track, identity: p.identity })
+        }
+      }
+    }
+
+    for (const [sid, el] of Array.from(remoteAudioEls.entries())) {
+      if (!wanted.has(sid)) {
+        ;((el as any).__lkTrack as RemoteAudioTrack | undefined)?.detach(el)
+        el.remove()
+        remoteAudioEls.delete(sid)
+      }
+    }
+
+    for (const [sid, info] of wanted) {
+      if (remoteAudioEls.has(sid)) continue
+      const el = document.createElement('audio')
+      el.autoplay = true
+      info.track.attach(el)
+      ;(el as any).__lkTrack = info.track
+      ;(el as any).__identity = info.identity
+      if (selectedAudioOutput.value && typeof (el as any).setSinkId === 'function') {
+        ;(el as any).setSinkId(selectedAudioOutput.value).catch(() => {})
+      }
+      document.body.appendChild(el)
+      remoteAudioEls.set(sid, el)
+      applyVolumeToEl(el)
+    }
+  }
+
+  function clearRemoteAudio() {
+    for (const [, el] of remoteAudioEls) {
+      ;((el as any).__lkTrack as RemoteAudioTrack | undefined)?.detach(el)
+      el.remove()
+    }
+    remoteAudioEls.clear()
+  }
+
+  function volumeFor(identity: string): number {
+    return volumes.value[identity] ?? 100
+  }
+
+  function setVolume(identity: string, v: number) {
+    volumes.value = { ...volumes.value, [identity]: v }
+    for (const el of remoteAudioEls.values()) applyVolumeToEl(el)
+  }
+
+  function toggleDeafen() {
+    deafened.value = !deafened.value
+    for (const el of remoteAudioEls.values()) applyVolumeToEl(el)
+  }
+
+  watch(selectedAudioOutput, async (deviceId) => {
+    if (!deviceId) return
+    for (const el of remoteAudioEls.values()) {
+      if (typeof (el as any).setSinkId === 'function') {
+        try { await (el as any).setSinkId(deviceId) } catch {}
+      }
+    }
+  })
 
   // ===== Preferências persistentes (localStorage) =====
   const SETTINGS_KEY = 'absono_voice_settings'
@@ -87,6 +175,7 @@ export const useVoiceStore = defineStore('voice', () => {
   function touch() {
     participants.value = room.value ? [...room.value.remoteParticipants.values()] : []
     revision.value++
+    syncRemoteAudio()
   }
 
   function resetSessionState() {
@@ -99,6 +188,7 @@ export const useVoiceStore = defineStore('voice', () => {
     isCameraEnabled.value = false
     isScreenSharing.value = false
     mediaToggling.value = false
+    clearRemoteAudio()
     revision.value++
   }
 
@@ -490,6 +580,11 @@ export const useVoiceStore = defineStore('voice', () => {
     localScreenShareTrack,
     activeSpeakers,
     screenWatchers,
+    volumes,
+    deafened,
+    volumeFor,
+    setVolume,
+    toggleDeafen,
     isMicrophoneEnabled,
     isCameraEnabled,
     isScreenSharing,
