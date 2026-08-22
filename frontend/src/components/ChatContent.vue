@@ -416,10 +416,10 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="message-actions" v-if="canModifyMessage(message)">
-            <el-button size="small" text circle @click="startEdit(message)">
+            <el-button size="small" text circle title="Editar mensagem" @click="startEdit(message)">
               <el-icon><Edit /></el-icon>
             </el-button>
-            <el-button size="small" text circle @click="deleteMessage(message)">
+            <el-button size="small" text circle title="Excluir mensagem" @click="deleteMessage(message)">
               <el-icon><Delete /></el-icon>
             </el-button>
           </div>

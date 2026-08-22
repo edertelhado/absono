@@ -24,7 +24,9 @@ class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker('/topic', '/user/queue')
+        // '/queue' é obrigatório: destinos de usuário (/user/queue/**) são
+        // traduzidos para /queue/<dest>-<sessão> antes de chegarem ao broker
+        registry.enableSimpleBroker('/topic', '/queue')
         registry.setApplicationDestinationPrefixes('/app')
         registry.setUserDestinationPrefix('/user')
     }

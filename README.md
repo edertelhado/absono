@@ -443,8 +443,28 @@ cd backend
 
 ```bash
 cd frontend
-npm run build
+npm run build    # typecheck + build (vue-tsc)
 ```
+
+### E2E (Playwright)
+
+Cobrem os fluxos críticos ponta a ponta com **dois usuários simultâneos**:
+auth/sessão persistente, chat em tempo real, edição/exclusão, badges de não
+lidas, upload presignado (>10MB) e chamadas de voz (mic/cam falsos do
+Chromium), incluindo navegar para canal de texto sem derrubar a call.
+
+Pré-requisitos: stack de dev no ar (`docker compose up -d`, backend e frontend).
+
+```bash
+cd e2e
+npm install
+npx playwright install chromium
+npm test              # ou npm run test:ui para o modo interativo
+npm run report        # relatório HTML após execuções com falha
+```
+
+Variáveis opcionais: `E2E_BASE_URL` (padrão `http://localhost:3000`) e
+`E2E_API_URL` (padrão `http://localhost:8080`).
 
 ## Tecnologias
 

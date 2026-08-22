@@ -414,6 +414,7 @@ async function toggleFullscreen() {
             :type="voiceStore.isMicrophoneEnabled ? 'primary' : 'danger'"
             circle
             size="large"
+            title="Microfone"
             @click="toggleMicrophone"
           >
             <el-icon><Microphone v-if="voiceStore.isMicrophoneEnabled" /><Mute v-else /></el-icon>
@@ -432,6 +433,7 @@ async function toggleFullscreen() {
             :type="voiceStore.isCameraEnabled ? 'primary' : 'danger'"
             circle
             size="large"
+            title="Câmera"
             @click="toggleCamera"
           >
             <el-icon><VideoCamera v-if="voiceStore.isCameraEnabled" /><VideoPause v-else /></el-icon>
@@ -441,16 +443,17 @@ async function toggleFullscreen() {
             :type="voiceStore.isScreenSharing ? 'success' : 'default'"
             circle
             size="large"
+            title="Compartilhar tela"
             @click="toggleScreenShare"
           >
             <el-icon><Monitor /></el-icon>
           </el-button>
 
-          <el-button type="danger" circle size="large" @click="leaveCall">
+          <el-button type="danger" circle size="large" title="Desconectar" @click="leaveCall">
             <el-icon><Phone /></el-icon>
           </el-button>
 
-          <el-button circle size="large" @click="showSettings = true">
+          <el-button circle size="large" title="Configurações de chamada" @click="showSettings = true">
             <el-icon><Setting /></el-icon>
           </el-button>
         </div>

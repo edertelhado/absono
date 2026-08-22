@@ -16,6 +16,13 @@ backend/out/
 frontend/node_modules/
 frontend/dist/
 
+# === E2E (Playwright) ===
+node_modules/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
 # === Desktop (Electron) ===
 desktop/node_modules/
 desktop/dist/

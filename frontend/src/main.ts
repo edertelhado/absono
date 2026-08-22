@@ -20,9 +20,15 @@ app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { size: 'default' })
 
-// restaura a sessão (com refresh se necessário) antes de montar,
-// para o guard de rota decidir com o usuário já carregado
+// restaura a sessão antes de montar: o vue-router dispara a navegação
+// inicial já no install, então o guard precisa da sessão pronta — e se ela
+// chegou depois, devolve o usuário autenticado que caiu em /login
 const authStore = useAuthStore()
 authStore.init().catch(() => {}).finally(() => {
-  app.mount('#app')
+  router.isReady().then(() => {
+    if (authStore.isAuthenticated && router.currentRoute.value.name === 'login') {
+      router.replace({ name: 'home' })
+    }
+    app.mount('#app')
+  })
 })
