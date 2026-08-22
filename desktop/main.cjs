@@ -1,8 +1,34 @@
 const { app, BrowserWindow, Tray, Menu, shell } = require('electron')
 const path = require('path')
 
-const ICON_PATH = path.join(__dirname, 'build', 'icon.png')
-const SERVER_URL = process.env.ABSONO_SERVER_URL || 'http://localhost:3000'
+const fs = require('fs')
+let ICON_PATH = path.join(__dirname, 'build', 'icon.png')
+if (!fs.existsSync(ICON_PATH)) ICON_PATH = path.join(__dirname, 'icon.png')
+
+/**
+ * Ordem de resolução do servidor:
+ *   1. variável de ambiente ABSONO_SERVER_URL
+ *   2. arquivo server-url.txt ao lado do executável (zip portátil)
+ *   3. arquivo server-url.txt junto do app
+ * Sem nada disso: dev usa http://localhost:3000; empacotado mostra erro guiado.
+ */
+function resolveServerUrl() {
+  if (process.env.ABSONO_SERVER_URL) return process.env.ABSONO_SERVER_URL.trim()
+  const candidates = []
+  try { candidates.push(path.join(path.dirname(app.getPath('exe')), 'server-url.txt')) } catch {}
+  candidates.push(path.join(__dirname, 'server-url.txt'))
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) {
+        const value = fs.readFileSync(candidate, 'utf8').trim()
+        if (value) return value
+      }
+    } catch {}
+  }
+  return null
+}
+
+let SERVER_URL = null
 
 let mainWindow = null
 let tray = null
@@ -31,8 +57,9 @@ function createWindow() {
       align-items:center;justify-content:center;height:100vh;margin:0}
       div{max-width:520px;text-align:center}code{background:#26272c;padding:2px 6px;border-radius:4px}</style></head>
       <body><div><h2>Não foi possível carregar o Ábsono</h2>
-      <p>O app empacotado precisa apontar para um servidor. Inicie com:</p>
-      <p><code>ABSONO_SERVER_URL=https://seu-servidor ./Ábsono</code></p>
+      <p>O app empacotado precisa apontar para um servidor. Crie o arquivo
+      <code>server-url.txt</code> ao lado do executável contendo a URL
+      (ex.: <code>https://absono.duckdns.org:4432</code>) e reabra.</p>
       <p style="opacity:.6;font-size:12px">${code} ${desc}</p></div></body></html>`)
     mainWindow.loadURL('data:text/html;charset=utf-8,' + html)
   })
@@ -42,10 +69,12 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  if (process.env.ABSONO_SERVER_URL) {
+  SERVER_URL = SERVER_URL || resolveServerUrl()
+
+  if (SERVER_URL) {
     mainWindow.loadURL(SERVER_URL)
   } else if (!app.isPackaged) {
-    mainWindow.loadURL(SERVER_URL)
+    mainWindow.loadURL('http://localhost:3000')
     mainWindow.webContents.openDevTools({ mode: 'detach' })
   } else {
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'))

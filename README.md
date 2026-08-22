@@ -156,24 +156,29 @@ Para que outro computador acesse a instância de desenvolvimento (ex.: IP `192.1
 Portas envolvidas: `3000/tcp` (app), `8080/tcp` (API), `7880/tcp + 7881/tcp`
 (sinal LiveKit), `50000-50100/udp` (mídia WebRTC), `3902/tcp` (Garage).
 
-### Trocar o IP/URL no app desktop (Electron)
+### Desktop (Electron): builds e servidor
 
-O desktop lê a variável de ambiente `ABSONO_SERVER_URL`. Por padrão aponta para
-`http://localhost:3000` — para apontar para outro servidor:
+Resolução do servidor, nesta ordem:
+1. variável de ambiente `ABSONO_SERVER_URL`
+2. arquivo **`server-url.txt`** ao lado do executável (ideal para distribuir)
+3. dev: `http://localhost:3000`; empacotado sem nada: página guiada de erro
 
 ```bash
 cd desktop
 
-# Apontando para o dev de outra máquina na LAN:
+# desenvolvimento apontando para outro servidor:
 ABSONO_SERVER_URL=http://192.168.18.8:3000 npm run dev
 
-# Apontando para a VPS:
-ABSONO_SERVER_URL=http://SEU_IP npm start
+# Windows zip com a URL embutida no pacote:
+cp server-url.txt.example server-url.txt      # edite com a URL final
+npm run build:win                              # -> release/absono-desktop-*-win-x64.zip
 ```
 
-Se `ABSONO_SERVER_URL` estiver definida ela tem prioridade mesmo em builds
-empacotados; sem ela, o modo empacotado carrega o `dist/index.html` local e o
-modo dev cai em `http://localhost:3000`.
+O zip já inclui `server-url.txt.example`: após extrair no Windows, renomeie para
+`server-url.txt` (ao lado do `Ábsono.exe`) caso precise trocar a URL sem rebuild.
+
+TURN: a VPS publica TURN/UDP na porta 3478 (relay embutido do LiveKit) para
+usuários atrás de NAT/firewall restritivo — nenhum ajuste no cliente.
 
 ### Observações de mídia por navegador
 
@@ -251,6 +256,7 @@ O script importa a chave do `.env` e cria o bucket, de forma idempotente.
 |---|---|---|
 | 80 | tcp | Caddy — desafio ACME |
 | 443 | tcp+udp | Caddy — app HTTPS e HTTP/3 |
+| 3478 | udp | LiveKit — TURN (relay p/ redes restritivas) |
 | 50000-50100 | udp | LiveKit — mídia WebRTC (direto, não passa pelo Caddy) |
 
 Tudo o mais (nginx, backend, Postgres, Redis, Garage API, sinalização 7880)

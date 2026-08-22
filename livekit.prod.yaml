@@ -11,6 +11,12 @@ redis:
 keys:
   devkey: absono-livekit-dev-secret-32-chars!!
 
+# TURN embutido: relay para usuários atrás de NAT/firewall restritivo.
+# TURN/UDP não exige certificado; abrir 3478/udp no firewall da VPS.
+turn:
+  enabled: true
+  udp_port: 3478
+
 logging:
   level: info
 

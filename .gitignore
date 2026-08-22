@@ -24,6 +24,7 @@ blob-report/
 .playwright/
 
 # === Desktop (Electron) ===
+desktop/server-url.txt
 desktop/node_modules/
 desktop/dist/
 desktop/release/
