@@ -9,24 +9,27 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.13",
-    "vue-router": "^4.5.0",
-    "pinia": "^2.3.0",
-    "element-plus": "^2.9.1",
     "@element-plus/icons-vue": "^2.3.1",
-    "axios": "^1.7.9",
-    "stompjs": "^2.3.3",
-    "sockjs-client": "^1.6.1",
     "@livekit/krisp-noise-filter": "^0.3.0",
-    "iconify-icon": "^2.3.0"
+    "@types/markdown-it": "^14.2.0",
+    "axios": "^1.7.9",
+    "dompurify": "^3.4.14",
+    "element-plus": "^2.9.1",
+    "iconify-icon": "^2.3.0",
+    "markdown-it": "^15.0.0",
+    "pinia": "^2.3.0",
+    "sockjs-client": "^1.6.1",
+    "stompjs": "^2.3.3",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.1",
-    "vite": "^6.0.0",
-    "vue-tsc": "^2.2.0",
-    "typescript": "^5.7.2",
-    "sass": "^1.82.0",
+    "@types/sockjs-client": "^1.5.4",
     "@types/stompjs": "^2.3.3",
-    "@types/sockjs-client": "^1.5.4"
+    "@vitejs/plugin-vue": "^5.2.1",
+    "sass": "^1.82.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "vue-tsc": "^2.2.0"
   }
 }

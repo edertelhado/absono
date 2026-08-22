@@ -65,6 +65,7 @@ export interface Message {
   avatarUrl?: string
   userStatus?: UserStatus
   attachments?: MessageAttachment[]
+  reactions?: ReactionSummary[]
 }
 
 export interface MessageAttachment {
@@ -76,6 +77,12 @@ export interface MessageAttachment {
   s3Key?: string
   url?: string
   createdAt?: string
+}
+
+export interface ReactionSummary {
+  emoji: string
+  count: number
+  userIds: string[]
 }
 
 export interface AuthResponse {

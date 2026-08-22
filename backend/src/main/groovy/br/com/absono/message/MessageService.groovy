@@ -29,6 +29,7 @@ class MessageService {
         def messages = messageMapper.findByChannelId(channelId, limit, offset)
         messages.each { msg ->
             msg.attachments = messageMapper.findAttachmentsByMessageId(msg.id)
+            msg.reactions = getReactionsSummary(msg.id)
         }
         messages.reverse()
     }
@@ -44,8 +45,33 @@ class MessageService {
         def messages = messageMapper.searchByChannel(channelId, query, limit)
         messages.each { msg ->
             msg.attachments = messageMapper.findAttachmentsByMessageId(msg.id)
+            msg.reactions = getReactionsSummary(msg.id)
         }
         messages
+    }
+
+    List<Map<String, Object>> getReactionsSummary(String messageId) {
+        def rows = messageMapper.findReactionsByMessageId(messageId)
+        def byEmoji = [:]
+        rows.each { r ->
+            def entry = byEmoji[r.emoji] ?: [emoji: r.emoji, count: 0, userIds: []]
+            entry.count++
+            (entry.userIds as List) << r.userId
+            byEmoji[r.emoji] = entry
+        }
+        byEmoji.values().toList()
+    }
+
+    Map addReaction(String messageId, String userId, String emoji) {
+        if (!messageMapper.findByMessageAndUserAndEmoji(messageId, userId, emoji)) {
+            messageMapper.insertReaction(br.com.absono.common.Ulid.generate(), messageId, userId, emoji)
+        }
+        [messageId: messageId, channelId: getMessage(messageId).channelId, reactions: getReactionsSummary(messageId)]
+    }
+
+    Map removeReaction(String messageId, String userId, String emoji) {
+        messageMapper.deleteReaction(messageId, userId, emoji)
+        [messageId: messageId, channelId: getMessage(messageId).channelId, reactions: getReactionsSummary(messageId)]
     }
 
     int getMessageCount(String channelId) {

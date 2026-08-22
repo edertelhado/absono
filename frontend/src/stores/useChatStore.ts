@@ -77,6 +77,14 @@ export const useChatStore = defineStore('chat', () => {
     return await messageService.uploadAttachment(file)
   }
 
+  async function toggleReaction(messageId: string, emoji: string, add: boolean) {
+    if (add) {
+      await messageService.addReaction(messageId, emoji)
+    } else {
+      await messageService.removeReaction(messageId, emoji)
+    }
+  }
+
   async function sendAttachment(file: File, onProgress?: (pct: number) => void) {
     const uploaded = await messageService.uploadAttachment(file, onProgress)
     const message = await sendMessage('')
@@ -113,6 +121,16 @@ export const useChatStore = defineStore('chat', () => {
       case 'MESSAGE_DELETED':
         messages.value = messages.value.filter(m => m.id !== data.data.id)
         break
+      case 'MESSAGE_REACTIONS': {
+        const idx = messages.value.findIndex(m => m.id === data.data?.messageId)
+        if (idx !== -1) {
+          messages.value[idx] = {
+            ...messages.value[idx],
+            reactions: data.data.reactions,
+          }
+        }
+        break
+      }
       case 'MESSAGE_ATTACHMENTS': {
         const idx = messages.value.findIndex(m => m.id === data.data?.messageId)
         if (idx !== -1) {
@@ -157,6 +175,7 @@ export const useChatStore = defineStore('chat', () => {
     sendMessage,
     editMessage,
     deleteMessage,
+    toggleReaction,
     uploadAttachment,
     sendAttachment,
   }

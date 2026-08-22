@@ -75,6 +75,14 @@ export const messageService = {
     }
   },
 
+  async addReaction(messageId: string, emoji: string): Promise<void> {
+    await api.post(`/messages/${messageId}/reactions`, { emoji })
+  },
+
+  async removeReaction(messageId: string, emoji: string): Promise<void> {
+    await api.delete(`/messages/${messageId}/reactions`, { params: { emoji } })
+  },
+
   async attachToMessage(messageId: string, attachment: Partial<MessageAttachment>): Promise<MessageAttachment> {
     const response = await api.post(`/messages/${messageId}/attachments`, attachment)
     return response.data

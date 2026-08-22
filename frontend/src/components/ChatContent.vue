@@ -8,6 +8,7 @@ import { usePresenceStore } from '@/stores/usePresenceStore'
 import { webSocketService } from '@/services/websocket'
 import { messageService } from '@/services/message'
 import { formatRelativeTime, getAvatarUrl, formatFileSize } from '@/utils'
+import { renderRichMessage } from '@/utils/markdown'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { Message, MessageAttachment } from '@/types'
 
@@ -30,6 +31,25 @@ const loading = computed(() => chatStore.loading)
 const hasMore = computed(() => chatStore.hasMore)
 const canWrite = computed(() => permissionStore.can(channel.value?.id, 'canWrite'))
 const canManage = computed(() => permissionStore.can(channel.value?.id, 'canManage'))
+
+const REACTION_EMOJIS = ['👍','❤️','😂','🎉','😮','😢','🔥','👀','✅','❌','🙏','👏','🚀','💯','🤔','😅','😍','🤝','⚡','🐛']
+
+function isOwn(message: Message): boolean {
+  return message.userId === authStore.user?.id
+}
+
+function toggleReaction(message: Message, r?: { emoji?: string; userIds?: string[] }) {
+  const emoji = r?.emoji
+  const userIds = r?.userIds
+  if (!emoji || !userIds) return
+  chatStore.toggleReaction(message.id, emoji, !userIds.includes(authStore.user?.id ?? ''))
+}
+
+function addReaction(message: Message, emoji: string) {
+  const already = message.reactions?.some(r => r.emoji === emoji && r.userIds.includes(authStore.user?.id ?? ''))
+  if (already) return
+  chatStore.toggleReaction(message.id, emoji, true)
+}
 
 let lastTypingSent = 0
 
@@ -376,7 +396,36 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div v-else class="message-text">{{ message.content }}</div>
+          <div v-else class="message-text md" v-html="renderRichMessage(message.content)"></div>
+
+          <div class="reactions-row" v-if="message.reactions?.length || isOwn(message)">
+            <button
+              v-for="r in message.reactions"
+              :key="r.emoji"
+              class="reaction-chip"
+              :class="{ mine: r.userIds.includes(authStore.user?.id ?? '') }"
+              @click="toggleReaction(message, r)"
+            >
+              <span class="reaction-emoji">{{ r.emoji }}</span>
+              <span class="reaction-count">{{ r.count }}</span>
+            </button>
+
+            <el-popover trigger="click" :width="264" placement="top-start">
+              <template #reference>
+                <button class="reaction-add" title="Adicionar reação">
+                  <el-icon><Plus /></el-icon>
+                </button>
+              </template>
+              <div class="emoji-grid">
+                <button
+                  v-for="e in REACTION_EMOJIS"
+                  :key="e"
+                  class="emoji-option"
+                  @click="addReaction(message, e)"
+                >{{ e }}</button>
+              </div>
+            </el-popover>
+          </div>
 
           <div v-if="message.attachments?.length" class="message-attachments">
             <div
@@ -852,6 +901,115 @@ onBeforeUnmount(() => {
 .attachment-size {
   font-size: 11px;
   color: var(--absono-text-muted);
+}
+
+.reactions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.reaction-chip,
+.reaction-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--absono-border);
+  background: var(--absono-surface-2);
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    background: var(--absono-hover);
+    border-color: var(--absono-primary);
+  }
+
+  .reaction-emoji { font-size: 14px; line-height: 1; }
+  .reaction-count { font-size: 12px; font-weight: 600; color: var(--absono-text-secondary); }
+}
+
+.reaction-chip.mine {
+  border-color: var(--absono-primary);
+  background: var(--absono-primary-subtle);
+
+  .reaction-count { color: var(--absono-primary); }
+}
+
+.reaction-add {
+  opacity: 0;
+  color: var(--absono-text-muted);
+
+  .message-wrapper:hover & { opacity: 1; }
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+
+  .emoji-option {
+    font-size: 18px;
+    padding: 4px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+
+    &:hover { background: var(--absono-hover); }
+  }
+}
+
+/* ===== Markdown ===== */
+.message-text.md {
+  :deep(h1), :deep(h2), :deep(h3), :deep(h4) {
+    font-family: var(--font-display);
+    color: var(--absono-text);
+    margin: var(--space-sm) 0 2px;
+    line-height: 1.25;
+  }
+  :deep(h1) { font-size: 20px; border-bottom: 1px solid var(--absono-border); padding-bottom: 4px; }
+  :deep(h2) { font-size: 17px; }
+  :deep(h3) { font-size: 15px; }
+  :deep(h4) { font-size: 14px; }
+
+  :deep(p) { margin: 2px 0; }
+
+  :deep(u) { text-underline-offset: 3px; }
+
+  :deep(code) {
+    font-family: monospace;
+    font-size: 13px;
+    background: var(--absono-surface-3, rgba(255,255,255,0.08));
+    padding: 1px 5px;
+    border-radius: var(--radius-sm);
+  }
+
+  :deep(pre) {
+    background: var(--absono-surface-3, rgba(255,255,255,0.08));
+    border: 1px solid var(--absono-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm);
+    overflow-x: auto;
+    margin: var(--space-xs) 0;
+
+    code { background: none; padding: 0; }
+  }
+
+  :deep(blockquote) {
+    margin: var(--space-xs) 0;
+    padding: 2px var(--space-md);
+    border-left: 3px solid var(--absono-border);
+    color: var(--absono-text-muted);
+  }
+
+  :deep(a) { color: var(--absono-primary); }
+
+  :deep(ul), :deep(ol) { margin: 4px 0; padding-left: 22px; }
+
+  :deep(hr) { border-color: var(--absono-border); margin: var(--space-sm) 0; }
 }
 
 .loading-state {

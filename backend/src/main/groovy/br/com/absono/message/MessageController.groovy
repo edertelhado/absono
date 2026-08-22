@@ -133,6 +133,33 @@ class MessageController {
         ]
     }
 
+    @PostMapping('/messages/{id}/reactions')
+    ResponseEntity<?> addReaction(@PathVariable String id, @RequestBody Map body) {
+        def user = userService.getCurrentUser()
+        def result = messageService.addReaction(id, user.id, body.emoji?.toString() ?: '')
+        broadcastReactions(result.channelId as String, result)
+        ResponseEntity.ok([success: true])
+    }
+
+    @DeleteMapping('/messages/{id}/reactions')
+    ResponseEntity<?> removeReaction(@PathVariable String id, @RequestParam('emoji') String emoji) {
+        def user = userService.getCurrentUser()
+        def result = messageService.removeReaction(id, user.id, emoji)
+        broadcastReactions(result.channelId as String, result)
+        ResponseEntity.ok([success: true])
+    }
+
+    private void broadcastReactions(String channelId, Map result) {
+        messagingTemplate.convertAndSend("/topic/channels/${channelId}".toString(), [
+            type: 'MESSAGE_REACTIONS',
+            data: [
+                messageId: result.messageId,
+                channelId: channelId,
+                reactions: result.reactions
+            ]
+        ])
+    }
+
     @PutMapping('/messages/{id}')
     ResponseEntity<?> editMessage(@PathVariable String id, @RequestBody Map body) {
         def user = userService.getCurrentUser()

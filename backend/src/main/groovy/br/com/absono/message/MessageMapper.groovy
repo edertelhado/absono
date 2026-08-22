@@ -24,6 +24,16 @@ interface MessageMapper {
 
     List<MessageAttachment> findAttachmentsByMessageId(String messageId)
 
+    int insertReaction(@Param('id') String id, @Param('messageId') String messageId, @Param('userId') String userId, @Param('emoji') String emoji)
+
+    int deleteReaction(@Param('messageId') String messageId, @Param('userId') String userId, @Param('emoji') String emoji)
+
+    int findByMessageAndUserAndEmoji(@Param('messageId') String messageId, @Param('userId') String userId, @Param('emoji') String emoji)
+
+    List<MessageReaction> findReactionsByMessageId(String messageId)
+
+    void deleteReactionsByMessageId(String messageId)
+
     MessageAttachment findAttachmentById(String id)
 
     int deleteAttachment(String id)

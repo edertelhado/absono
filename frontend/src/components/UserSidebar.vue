@@ -28,19 +28,26 @@ const ROLE_BADGES: Partial<Record<UserRole, string>> = {
 const isAdmin = computed(() => authStore.user?.role === 'ADMIN')
 
 const onlineUsers = computed<User[]>(() =>
-  presenceStore.users.filter(u => presenceStore.isOnline(u.id))
+  presenceStore.users.filter(u => effectiveStatus(u) !== 'OFFLINE')
 )
 
 const offlineUsers = computed<User[]>(() =>
-  presenceStore.users.filter(u => !presenceStore.isOnline(u.id))
+  presenceStore.users.filter(u => effectiveStatus(u) === 'OFFLINE')
 )
 
+// prioriza o mapa de presença ao vivo (WS); cai para o status persistido só como fallback
+function effectiveStatus(user: User): UserStatus {
+  const live = presenceStore.getStatus(user.id)
+  if (live && live !== 'OFFLINE') return live
+  return (user.status ?? 'OFFLINE') as UserStatus
+}
+
 function statusLabel(user: User): string {
-  return STATUS_LABELS[user.status ?? presenceStore.getStatus(user.id)] ?? 'Offline'
+  return STATUS_LABELS[effectiveStatus(user)] ?? 'Offline'
 }
 
 function statusClass(user: User): string {
-  return `status-${(user.status ?? presenceStore.getStatus(user.id) ?? 'OFFLINE').toLowerCase()}`
+  return `status-${effectiveStatus(user).toLowerCase()}`
 }
 
 function roleBadge(user: User): string | undefined {
@@ -58,6 +65,22 @@ async function changeRole(user: User, role: UserRole) {
 }
 
 const speakingIds = computed<Set<string>>(() => voiceStore.activeSpeakers)
+
+const me = computed(() => authStore.user)
+
+async function setStatus(status: UserStatus) {
+  if (!me.value || status === (me.value.status ?? 'ONLINE')) return
+  try {
+    await authStore.updateStatus(status)
+    ElMessage.success(`Status: ${STATUS_LABELS[status]}`)
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || 'Erro ao mudar status')
+  }
+}
+
+function myStatusLabel(): string {
+  return me.value ? STATUS_LABELS[me.value.status ?? 'ONLINE'] ?? 'Online' : ''
+}
 </script>
 
 <template>
@@ -133,6 +156,25 @@ const speakingIds = computed<Set<string>>(() => voiceStore.activeSpeakers)
       <div v-if="presenceStore.users.length === 0 && !presenceStore.loading" class="empty-state">
         <p>Nenhum usuário registrado</p>
       </div>
+    </div>
+
+    <div class="sidebar-footer" v-if="me">
+      <el-dropdown trigger="click" @command="(cmd: any) => setStatus(cmd as UserStatus)">
+        <button class="me-chip" title="Mudar status">
+          <span class="status-dot" :class="statusClass(me)"></span>
+          <span class="me-name">{{ me.displayName }}</span>
+          <span class="me-status">{{ myStatusLabel() }}</span>
+          <el-icon class="me-caret"><ArrowDown /></el-icon>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="ONLINE">🟢 Online</el-dropdown-item>
+            <el-dropdown-item command="AWAY">🟡 Ausente</el-dropdown-item>
+            <el-dropdown-item command="DO_NOT_DISTURB">🔴 Não perturbe</el-dropdown-item>
+            <el-dropdown-item command="INVISIBLE">⚫ Invisível</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
   </aside>
 </template>
@@ -308,5 +350,44 @@ const speakingIds = computed<Set<string>>(() => voiceStore.activeSpeakers)
   padding: var(--space-xl);
   color: var(--absono-text-muted);
   font-size: 13px;
+}
+.sidebar-footer {
+  padding: var(--space-sm);
+  border-top: 1px solid var(--absono-border);
+}
+
+.me-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+
+  &:hover { background-color: var(--absono-hover); }
+}
+
+.me-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--absono-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.me-status {
+  font-size: 11px;
+  color: var(--absono-text-muted);
+  margin-left: auto;
+}
+
+.me-caret {
+  font-size: 12px;
+  color: var(--absono-text-muted);
 }
 </style>

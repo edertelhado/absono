@@ -17,4 +17,5 @@ class Message {
     String avatarUrl
     String userStatus
     List<MessageAttachment> attachments
+    List<Map<String, Object>> reactions
 }

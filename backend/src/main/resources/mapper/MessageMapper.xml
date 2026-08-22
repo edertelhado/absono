@@ -98,4 +98,38 @@
         DELETE FROM message_attachments WHERE id = #{id}
     </delete>
 
+
+    <resultMap id="ReactionResultMap" type="br.com.absono.message.MessageReaction">
+        <id property="id" column="id"/>
+        <result property="messageId" column="message_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="emoji" column="emoji"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <insert id="insertReaction">
+        INSERT INTO message_reactions (id, message_id, user_id, emoji)
+        VALUES (#{id}, #{messageId}, #{userId}, #{emoji})
+        ON CONFLICT (message_id, user_id, emoji) DO NOTHING
+    </insert>
+
+    <delete id="deleteReaction">
+        DELETE FROM message_reactions
+        WHERE message_id = #{messageId} AND user_id = #{userId} AND emoji = #{emoji}
+    </delete>
+
+    <select id="findByMessageAndUserAndEmoji" resultType="int">
+        SELECT COUNT(*) FROM message_reactions
+        WHERE message_id = #{messageId} AND user_id = #{userId} AND emoji = #{emoji}
+    </select>
+
+    <select id="findReactionsByMessageId" resultMap="ReactionResultMap">
+        SELECT id, message_id, user_id, emoji, created_at
+        FROM message_reactions WHERE message_id = #{messageId}
+        ORDER BY created_at ASC
+    </select>
+
+    <delete id="deleteReactionsByMessageId">
+        DELETE FROM message_reactions WHERE message_id = #{messageId}
+    </delete>
 </mapper>
