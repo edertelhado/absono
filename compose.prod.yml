@@ -100,7 +100,6 @@ services:
     environment:
       PUBLIC_APP_DOMAIN: ${PUBLIC_APP_DOMAIN:?Defina PUBLIC_APP_DOMAIN no .env - ex 201-71-20-54.sslip.io}
       PUBLIC_S3_DOMAIN: ${PUBLIC_S3_DOMAIN:?Defina PUBLIC_S3_DOMAIN no .env - ex s3.201-71-20-54.sslip.io}
-      ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
       DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:-}
     volumes:
       - ${CADDYFILE:-./Caddyfile.prod}:/etc/caddy/Caddyfile:ro

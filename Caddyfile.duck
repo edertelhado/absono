@@ -1,8 +1,7 @@
-{
-	email {$ACME_EMAIL:admin@example.com}
-}
-
 # Desafio DNS-01 via DuckDNS — nao precisa das portas 80/443 publicas.
+# Sem bloco de email: o LE aceita conta sem contato e o Caddy renova sozinho.
+# Para receber avisos de expiracao adicione manualmente um bloco global:
+#   { email voce@seudominio.com }
 {$PUBLIC_APP_DOMAIN} {
 	tls {
 		dns duckdns {$DUCKDNS_TOKEN}

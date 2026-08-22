@@ -220,7 +220,6 @@ Edite o `.env` — se o IP da VPS for `201.71.20.54`:
 | `PUBLIC_APP_DOMAIN` | `201-71-20-54.sslip.io` | Domínio do app (Caddy emite o TLS dele) |
 | `PUBLIC_S3_DOMAIN` | `s3.201-71-20-54.sslip.io` | Domínio do S3 (assinatura SigV4 das URLs) |
 | `JWT_SECRET` | `openssl rand -base64 48` | Segredo dos tokens da aplicação |
-| `ACME_EMAIL` | seu e-mail | Avisos do Let's Encrypt (opcional) |
 
 `LIVEKIT_URL` (`wss://…/livekit`) e `GARAGE_ENDPOINT` (`https://s3.…`) são
 derivados automaticamente desses domínios. Com domínio próprio, use-o no lugar
