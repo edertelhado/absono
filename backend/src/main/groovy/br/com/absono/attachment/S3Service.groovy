@@ -59,11 +59,11 @@ class S3Service {
         return presignRequest.url().toString()
     }
 
-    String getPresignedUploadUrl(String key, Duration duration) {
+    String getPresignedUploadUrl(String key, Duration duration, String contentType) {
         PutObjectRequest putRequest = PutObjectRequest.builder()
             .bucket(bucket)
             .key(key)
-            .contentType('application/octet-stream')
+            .contentType(contentType ?: 'application/octet-stream')
             .build()
 
         PresignedPutObjectRequest presignUploadRequest = s3Presigner.presignPutObject(req -> {

@@ -33,13 +33,46 @@ export const messageService = {
     await api.delete(`/messages/${messageId}`)
   },
 
-  async uploadAttachment(file: File): Promise<MessageAttachment> {
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await api.post('/attachments', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    return response.data
+  async uploadAttachment(file: File, onProgress?: (pct: number) => void): Promise<MessageAttachment> {
+    try {
+      // Fluxo preferido: URL pré-assinada — o arquivo vai direto ao Garage
+      const { data: pre } = await api.post('/attachments/presign', {
+        fileName: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        fileSize: file.size,
+      })
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('PUT', pre.uploadUrl)
+        xhr.setRequestHeader('Content-Type', pre.mimeType)
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100))
+        }
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Falha no upload (${xhr.status})`)))
+        xhr.onerror = () => reject(new Error('Erro de rede no upload'))
+        xhr.send(file)
+      })
+
+      return {
+        fileName: pre.fileName,
+        mimeType: pre.mimeType,
+        fileSize: pre.fileSize,
+        s3Key: pre.s3Key,
+        url: pre.url,
+      }
+    } catch (e: any) {
+      // Fallback: upload via backend (multipart)
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await api.post('/attachments', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (e.total) onProgress?.(Math.round((e.loaded / e.total) * 100))
+        },
+      })
+      return response.data
+    }
   },
 
   async attachToMessage(messageId: string, attachment: Partial<MessageAttachment>): Promise<MessageAttachment> {

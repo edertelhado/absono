@@ -68,7 +68,7 @@ export interface Message {
 }
 
 export interface MessageAttachment {
-  id: string
+  id?: string
   messageId?: string
   fileName: string
   mimeType?: string

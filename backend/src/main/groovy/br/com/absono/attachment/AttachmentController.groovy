@@ -2,12 +2,15 @@ package br.com.absono.attachment
 
 import br.com.absono.common.BusinessException
 import br.com.absono.common.ResourceNotFoundException
+import br.com.absono.common.Ulid
 import br.com.absono.message.MessageMapper
 import br.com.absono.message.MessageAttachment
 import br.com.absono.user.UserService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
+
+import java.time.Duration
 
 @RestController
 @RequestMapping('/api/attachments')
@@ -53,23 +56,29 @@ class AttachmentController {
 
     @PostMapping('/presign')
     ResponseEntity<?> presignUpload(@RequestBody Map<String, String> body) {
-        def fileName = body.fileName ?: 'upload'
-        def mimeType = body.mimeType ?: 'application/octet-stream'
-        def fileSize = body.fileSize ?: 0 as long
-        def folder = (body.folder ?: 'uploads') as String
-        def s3Key = "${folder}/${folder}_${Ulid.generate()}".toString()
+        def fileName = (body.fileName ?: 'upload') as String
+        def mimeType = (body.mimeType ?: 'application/octet-stream') as String
+        long fileSize = Long.parseLong(body.fileSize?.toString() ?: '0')
 
-        def presignedUrl = s3Service.getPresignedUploadUrl(s3Key, Duration.ofMinutes(15))
+        if (fileSize <= 0) {
+            throw new BusinessException('Arquivo vazio')
+        }
+        if (fileSize > MAX_FILE_SIZE) {
+            throw new BusinessException('Arquivo excede o limite de 50MB')
+        }
 
-        def attachment = [
-            fileName: fileName,
-            mimeType: mimeType,
-            fileSize: fileSize,
-            s3Key: s3Key,
-            url: presignedUrl
-        ]
+        def folder = 'uploads'
+        def s3Key = "${folder}/${Ulid.generate()}_${fileName}".toString()
+        def presignedUrl = s3Service.getPresignedUploadUrl(s3Key, Duration.ofMinutes(15), mimeType)
 
-        ResponseEntity.ok(attachment)
+        ResponseEntity.ok([
+            fileName : fileName,
+            mimeType : mimeType,
+            fileSize : fileSize,
+            s3Key    : s3Key,
+            url      : "/api/files/${s3Key}".toString(),
+            uploadUrl: presignedUrl
+        ])
     }
 
     @DeleteMapping('/{id}')

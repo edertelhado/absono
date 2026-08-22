@@ -1,13 +1,13 @@
 server:
-  servlet:
-    multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
   port: ${SERVER_PORT:8080}
 
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:50MB}
+      max-request-size: ${MAX_REQUEST_SIZE:55MB}
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/absono}
     username: ${POSTGRES_USER:absono}

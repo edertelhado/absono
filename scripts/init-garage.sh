@@ -13,6 +13,8 @@ fi
 GARAGE_ACCESS_KEY=$(grep '^GARAGE_ACCESS_KEY=' .env | cut -d= -f2-)
 GARAGE_SECRET_KEY=$(grep '^GARAGE_SECRET_KEY=' .env | cut -d= -f2-)
 GARAGE_BUCKET=$(grep '^GARAGE_BUCKET=' .env | cut -d= -f2-)
+GARAGE_S3_PORT=$(grep '^GARAGE_S3_PORT=' .env | cut -d= -f2-)
+GARAGE_S3_PORT=${GARAGE_S3_PORT:-3902}
 CONTAINER=absono-garage
 
 G() {
@@ -34,6 +36,16 @@ G bucket create "$GARAGE_BUCKET" 2>/dev/null || echo "Bucket já existe."
 
 echo "==> Autorizando chave no bucket"
 G bucket allow --read --write --owner --key "$GARAGE_ACCESS_KEY" "$GARAGE_BUCKET"
+
+echo "==> Configurando CORS no bucket (upload direto do navegador via URL presignada)"
+docker run --rm --network host \
+  -e AWS_ACCESS_KEY_ID="$GARAGE_ACCESS_KEY" \
+  -e AWS_SECRET_ACCESS_KEY="$GARAGE_SECRET_KEY" \
+  amazon/aws-cli:latest \
+  --endpoint-url "http://localhost:${GARAGE_S3_PORT}" \
+  s3api put-bucket-cors --bucket "$GARAGE_BUCKET" \
+  --cors-configuration '{"CORSRules":[{"AllowedHeaders":["*"],"AllowedMethods":["GET","PUT","HEAD"],"AllowedOrigins":["*"],"ExposeHeaders":["ETag"]}]}' \
+  || echo "AVISO: falha ao aplicar CORS — uploads diretos do navegador podem falhar"
 
 echo "==> Concluído. Resumo:"
 G key info "$GARAGE_ACCESS_KEY" || true
