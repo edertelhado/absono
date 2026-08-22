@@ -21,4 +21,6 @@ interface ChannelMapper {
     Integer getMaxPosition()
 
     int updatePosition(@Param('id') String id, @Param('position') int position)
+
+    int insertDirect(@Param('id') String id, @Param('name') String name, @Param('createdBy') String createdBy)
 }

@@ -2,6 +2,16 @@ import api from './auth'
 import type { Channel, ChannelType } from '@/types'
 
 export const channelService = {
+  async listDirectMessages(): Promise<any[]> {
+    const response = await api.get('/dm')
+    return response.data
+  },
+
+  async openDmWith(userId: string): Promise<{ channelId: string }> {
+    const response = await api.post(`/dm/with/${userId}`)
+    return response.data
+  },
+
   async getChannels(): Promise<Channel[]> {
     const response = await api.get('/channels')
     return response.data

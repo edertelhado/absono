@@ -23,9 +23,14 @@ export interface Channel {
   createdBy?: string
   createdAt?: string
   updatedAt?: string
+  peerId?: string
+  peerName?: string
+  peerUsername?: string
+  peerAvatarUrl?: string
+  peerStatus?: UserStatus
 }
 
-export type ChannelType = 'TEXT' | 'VOICE'
+export type ChannelType = 'TEXT' | 'DIRECT' | 'VOICE'
 
 export interface VoiceParticipant {
   channelId: string

@@ -294,8 +294,14 @@ onBeforeUnmount(() => {
 <template>
   <div class="chat-view">
     <div class="chat-header" v-if="channel">
-      <span class="header-hash">#</span>
-      <span class="header-name">{{ channel.name }}</span>
+      <template v-if="channel.type === 'DIRECT'">
+        <img class="header-avatar" :src="getAvatarUrl(channel.peerAvatarUrl, channel.peerUsername || '')" />
+        <span class="header-name">{{ channel.peerName || channel.peerUsername }}</span>
+      </template>
+      <template v-else>
+        <span class="header-hash">#</span>
+        <span class="header-name">{{ channel.name }}</span>
+      </template>
       <span class="header-divider"></span>
       <span class="header-description" v-if="channel.description">{{ channel.description }}</span>
 
@@ -479,7 +485,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div class="chat-input-area" v-if="channel?.type === 'TEXT' && canWrite">
+    <div class="chat-input-area" v-if="['TEXT', 'DIRECT'].includes(channel?.type ?? '') && canWrite">
       <div v-if="uploadProgress" class="upload-progress">
         <el-icon class="is-loading"><Loading /></el-icon>
         <span class="upload-name">{{ uploadProgress.name }}</span>
@@ -531,7 +537,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div class="no-write-access" v-else-if="channel?.type === 'TEXT' && !canWrite">
+    <div class="no-write-access" v-else-if="['TEXT', 'DIRECT'].includes(channel?.type ?? '') && !canWrite">
       Você não tem permissão para enviar mensagens neste canal.
     </div>
 
@@ -562,6 +568,13 @@ onBeforeUnmount(() => {
   padding: 0 var(--space-lg);
   background: var(--absono-surface-1);
   border-bottom: 1px solid var(--absono-border);
+}
+
+.header-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .header-hash {

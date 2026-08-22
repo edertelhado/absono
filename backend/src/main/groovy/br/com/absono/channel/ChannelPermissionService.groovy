@@ -14,11 +14,14 @@ class ChannelPermissionService {
     private final ChannelPermissionMapper permissionMapper
     private final UserMapper userMapper
     private final ChannelMapper channelMapper
+    private final DmService dmService
 
-    ChannelPermissionService(ChannelPermissionMapper permissionMapper, UserMapper userMapper, ChannelMapper channelMapper) {
+    ChannelPermissionService(ChannelPermissionMapper permissionMapper, UserMapper userMapper,
+                             ChannelMapper channelMapper, DmService dmService) {
         this.permissionMapper = permissionMapper
         this.userMapper = userMapper
         this.channelMapper = channelMapper
+        this.dmService = dmService
     }
 
     List<ChannelPermission> getPermissions(String channelId) {
@@ -88,6 +91,12 @@ class ChannelPermissionService {
         def channel = channelMapper.findById(channelId)
         if (channel == null) {
             return new EffectivePermissions(canRead: true, canWrite: true, canManage: false)
+        }
+
+        // DMs: apenas os dois participantes; ninguém gerencia
+        if (channel.type == ChannelType.DIRECT) {
+            boolean member = dmService.isMember(channelId, userId)
+            return new EffectivePermissions(canRead: member, canWrite: member, canManage: false)
         }
 
         boolean isCreator = channel.createdBy != null && channel.createdBy == userId

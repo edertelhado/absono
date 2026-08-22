@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="br.com.absono.channel.DmMapper">
+
+    <select id="findByChannelId" resultType="map">
+        SELECT d.channel_id              AS "channelId",
+               d.user_a                  AS "userA",
+               d.user_b                  AS "userB",
+               p.id                      AS "peerId",
+               p.username                AS "peerUsername",
+               p.display_name            AS "peerDisplayName",
+               p.avatar_url              AS "peerAvatarUrl",
+               p.status                  AS "peerStatus"
+        FROM dm_channels d
+        JOIN users p ON p.id = CASE WHEN d.user_a = #{me} THEN d.user_b ELSE d.user_a END
+        WHERE d.channel_id = #{channelId}
+    </select>
+
+    <select id="findByPair" resultType="map">
+        SELECT channel_id AS "channelId", user_a AS "userA", user_b AS "userB"
+        FROM dm_channels WHERE user_a = #{a} AND user_b = #{b}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO dm_channels (channel_id, user_a, user_b)
+        VALUES (#{channelId}, #{a}, #{b})
+    </insert>
+
+    <select id="listForUser" resultType="map">
+        SELECT d.channel_id                                   AS "channelId",
+               u.id                                           AS "peerId",
+               u.username                                     AS "peerUsername",
+               u.display_name                                 AS "peerDisplayName",
+               u.avatar_url                                   AS "peerAvatarUrl",
+               u.status                                       AS "peerStatus",
+               (SELECT max(m.created_at) FROM messages m
+                 WHERE m.channel_id = d.channel_id)           AS "lastMessageAt"
+        FROM dm_channels d
+        JOIN channels c ON c.id = d.channel_id
+        JOIN users u ON u.id = CASE WHEN d.user_a = #{userId} THEN d.user_b ELSE d.user_a END
+        WHERE d.user_a = #{userId} OR d.user_b = #{userId}
+        ORDER BY COALESCE((SELECT max(m.created_at) FROM messages m
+                 WHERE m.channel_id = d.channel_id), c.created_at) DESC
+    </select>
+</mapper>

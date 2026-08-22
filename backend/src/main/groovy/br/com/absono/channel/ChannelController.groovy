@@ -10,16 +10,38 @@ class ChannelController {
 
     private final ChannelService channelService
     private final UserService userService
+    private final DmService dmService
 
-    ChannelController(ChannelService channelService, UserService userService) {
+    ChannelController(ChannelService channelService, UserService userService, DmService dmService) {
         this.channelService = channelService
         this.userService = userService
+        this.dmService = dmService
     }
 
     @GetMapping
     ResponseEntity<?> getAllChannels() {
         def user = userService.getCurrentUser()
-        ResponseEntity.ok(channelService.getVisibleChannels(user.id))
+        def channels = channelService.getVisibleChannels(user.id).collect { ch ->
+            if (ch.type == ChannelType.DIRECT) {
+                def peer = dmService.peerOf(ch.id, user.id) ?: [:]
+                return [
+                    id           : ch.id,
+                    name         : ch.name,
+                    type         : ch.type.toString(),
+                    description  : ch.description,
+                    position     : ch.position,
+                    active       : ch.active,
+                    createdBy    : ch.createdBy,
+                    peerId       : peer.peerId,
+                    peerName     : peer.peerDisplayName,
+                    peerUsername : peer.peerUsername,
+                    peerAvatarUrl: peer.peerAvatarUrl,
+                    peerStatus   : peer.peerStatus,
+                ]
+            }
+            ch
+        }
+        ResponseEntity.ok(channels)
     }
 
     @GetMapping('/{id}')

@@ -54,4 +54,9 @@
         WHERE id = #{id}
     </update>
 
+
+    <insert id="insertDirect">
+        INSERT INTO channels (id, name, type, "position", active, created_by)
+        VALUES (#{id}, #{name}, 'DIRECT', 9999, true, #{createdBy})
+    </insert>
 </mapper>

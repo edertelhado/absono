@@ -72,7 +72,7 @@ onMounted(async () => {
       channelStore.setCurrentChannel(channel)
       unreadStore.clear(channel.id)
       await loadChannelPermissions(channel.id)
-      if (channel.type === 'TEXT') {
+      if (['TEXT', 'DIRECT'].includes(channel.type)) {
         chatStore.setCurrentChannel(channel.id)
       }
     }
@@ -108,7 +108,7 @@ watch(channelId, async (id) => {
       channelStore.setCurrentChannel(channel)
       unreadStore.clear(id)
       await loadChannelPermissions(id)
-      if (channel.type === 'TEXT') {
+      if (['TEXT', 'DIRECT'].includes(channel.type)) {
         chatStore.setCurrentChannel(id)
       }
     }
@@ -145,7 +145,7 @@ function openSettings() {
     />
 
     <div class="main-content">
-      <ChatContent v-if="channelStore.currentChannel?.type === 'TEXT'" />
+      <ChatContent v-if="['TEXT', 'DIRECT'].includes((channelStore.currentChannel?.type ?? 'TEXT'))" />
 
       <CallPanel v-else-if="channelStore.currentChannel?.type === 'VOICE'" />
 

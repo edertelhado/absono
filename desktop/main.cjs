@@ -23,6 +23,20 @@ function createWindow() {
     },
   })
 
+  // empacotado sem servidor definido: página explicativa em vez de tela branca
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, _url, isMain) => {
+    if (!isMain || process.env.ABSONO_SERVER_URL || !app.isPackaged) return
+    const html = encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8">
+      <style>body{font-family:system-ui;background:#16171b;color:#e6e6e8;display:flex;
+      align-items:center;justify-content:center;height:100vh;margin:0}
+      div{max-width:520px;text-align:center}code{background:#26272c;padding:2px 6px;border-radius:4px}</style></head>
+      <body><div><h2>Não foi possível carregar o Ábsono</h2>
+      <p>O app empacotado precisa apontar para um servidor. Inicie com:</p>
+      <p><code>ABSONO_SERVER_URL=https://seu-servidor ./Ábsono</code></p>
+      <p style="opacity:.6;font-size:12px">${code} ${desc}</p></div></body></html>`)
+    mainWindow.loadURL('data:text/html;charset=utf-8,' + html)
+  })
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) shell.openExternal(url)
     return { action: 'deny' }

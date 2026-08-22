@@ -61,6 +61,7 @@ function canManageChannel(channel: Channel): boolean {
 }
 
 const textChannels = computed(() => props.channels.filter(c => c.type === 'TEXT' && c.active))
+const directChannels = computed(() => props.channels.filter(c => c.type === 'DIRECT' && c.active))
 const voiceChannels = computed(() => props.channels.filter(c => c.type === 'VOICE' && c.active))
 
 async function createChannel() {
@@ -149,6 +150,29 @@ function participantName(p: VoiceParticipant): string {
             <button v-if="canManageChannel(channel)" class="channel-manage" title="Permissões" @click.stop="openPermissions(channel)">
               <el-icon><Setting /></el-icon>
             </button>
+          </div>
+        </template>
+      </div>
+
+      <!-- Mensagens diretas -->
+      <div class="channel-section" v-if="directChannels.length">
+        <div class="section-header" @click="toggleSection('dm')">
+          <el-icon class="section-chevron" :class="{ collapsed: isCollapsed('dm') }">
+            <ArrowDown />
+          </el-icon>
+          <span class="section-title">Mensagens diretas</span>
+        </div>
+        <template v-if="!isCollapsed('dm')">
+          <div
+            v-for="channel in directChannels"
+            :key="channel.id"
+            class="channel-item dm-item"
+            :class="{ active: currentChannel?.id === channel.id }"
+            @click="emit('selectChannel', channel)"
+          >
+            <img class="dm-avatar" :src="getAvatarUrl(channel.peerAvatarUrl, channel.peerUsername || channel.peerName || '')" />
+            <span class="channel-name">{{ channel.peerName || channel.peerUsername }}</span>
+            <span v-if="unreadLabel(channel.id)" class="unread-badge">{{ unreadLabel(channel.id) }}</span>
           </div>
         </template>
       </div>
@@ -411,6 +435,14 @@ function participantName(p: VoiceParticipant): string {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+}
+
+.dm-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
 }
 
 .unread-badge {

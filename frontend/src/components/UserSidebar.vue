@@ -7,10 +7,29 @@ import { useVoiceStore } from '@/stores/useVoiceStore'
 import { permissionService } from '@/services/permission'
 import { ElMessage } from 'element-plus'
 import { getAvatarUrl } from '@/utils'
+import { useRouter } from 'vue-router'
+import { channelService } from '@/services/channel'
+import { useChannelStore } from '@/stores/useChannelStore'
 
 const authStore = useAuthStore()
 const presenceStore = usePresenceStore()
 const voiceStore = useVoiceStore()
+const router = useRouter()
+const channelStore = useChannelStore()
+
+async function openDm(userId: string) {
+  try {
+    const { channelId } = await channelService.openDmWith(userId)
+    await channelStore.fetchChannels()
+    const ch = channelStore.channels.find(c => c.id === channelId)
+    console.log('[DM DEBUG] channelId=', channelId, '| na lista=', !!ch,
+      '| tipo=', (ch as any)?.type, '| total=', channelStore.channels.length)
+    router.push(`/channel/${channelId}`)
+  } catch (e: any) {
+    console.error('[DM DEBUG] falhou:', e?.message)
+    ElMessage.error(e.response?.data?.message || 'Erro ao abrir mensagem direta')
+  }
+}
 
 const STATUS_LABELS: Record<UserStatus, string> = {
   ONLINE: 'Online',
@@ -111,6 +130,15 @@ function myStatusLabel(): string {
             </span>
             <span class="user-status" :class="statusClass(user)">{{ statusLabel(user) }}</span>
           </div>
+          <button
+            v-if="user.id !== authStore.user?.id && effectiveStatus(user) !== 'OFFLINE'"
+            class="dm-btn"
+            :title="`Mensagem direta para ${user.displayName}`"
+            @click.stop="openDm(user.id)"
+          >
+            <el-icon><ChatDotRound /></el-icon>
+          </button>
+
           <el-dropdown
             v-if="isAdmin && user.id !== authStore.user?.id"
             trigger="click"
@@ -313,6 +341,29 @@ function myStatusLabel(): string {
     background-color: var(--absono-primary-subtle);
     color: var(--absono-primary);
   }
+}
+
+.dm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--absono-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+
+  &:hover {
+    background-color: var(--absono-hover);
+    color: var(--absono-primary);
+    opacity: 1;
+  }
+
+  .user-item:hover & { opacity: 1; }
 }
 
 .role-btn {
