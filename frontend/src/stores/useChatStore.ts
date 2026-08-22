@@ -77,8 +77,8 @@ export const useChatStore = defineStore('chat', () => {
     return await messageService.uploadAttachment(file)
   }
 
-  async function sendAttachment(file: File) {
-    const uploaded = await messageService.uploadAttachment(file)
+  async function sendAttachment(file: File, onProgress?: (pct: number) => void) {
+    const uploaded = await messageService.uploadAttachment(file, onProgress)
     const message = await sendMessage('')
     if (!message?.id) throw new Error('Falha ao criar mensagem do anexo')
     const attachment = await messageService.attachToMessage(message.id, {

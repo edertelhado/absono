@@ -136,6 +136,9 @@ async function sendMessage() {
   }
 }
 
+const uploadProgress = ref<{ pct: number; name: string } | null>(null)
+const uploading = computed(() => uploadProgress.value !== null)
+
 async function handleFileUpload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -146,12 +149,18 @@ async function handleFileUpload(event: Event) {
     return
   }
 
+  uploadProgress.value = { pct: 0, name: file.name }
   try {
-    await chatStore.sendAttachment(file)
+    await chatStore.sendAttachment(file, (pct) => {
+      if (uploadProgress.value) {
+        uploadProgress.value = { pct, name: file.name }
+      }
+    })
     ElMessage.success('Arquivo enviado com sucesso')
   } catch (e: any) {
     ElMessage.error(e.response?.data?.message || 'Erro ao enviar arquivo')
   } finally {
+    uploadProgress.value = null
     if (fileInput.value) {
       fileInput.value.value = ''
     }
@@ -419,6 +428,17 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="chat-input-area" v-if="channel?.type === 'TEXT' && canWrite">
+      <div v-if="uploadProgress" class="upload-progress">
+        <el-icon class="is-loading"><Loading /></el-icon>
+        <span class="upload-name">{{ uploadProgress.name }}</span>
+        <el-progress
+          :percentage="uploadProgress.pct"
+          :stroke-width="6"
+          :show-text="true"
+          class="upload-bar"
+        />
+      </div>
+
       <div class="reply-indicator" v-if="replyingTo">
         <span><strong>{{ replyingTo.displayName || replyingTo.username }}</strong></span>
         <el-button text circle size="small" @click="replyingTo = null">
@@ -427,7 +447,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="input-row">
-        <el-button class="attach-btn" text circle @click="fileInput?.click()">
+        <el-button class="attach-btn" text circle :disabled="uploading" @click="fileInput?.click()">
           <el-icon><Upload /></el-icon>
         </el-button>
         <input
@@ -849,6 +869,35 @@ onBeforeUnmount(() => {
   padding: var(--space-md) var(--space-lg);
   border-top: 1px solid var(--absono-border);
   background: var(--absono-surface-1);
+}
+
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--absono-surface-2);
+  border: 1px solid var(--absono-border);
+  border-radius: var(--radius-md);
+
+  .upload-name {
+    font-size: 12px;
+    color: var(--absono-text-secondary);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .upload-bar {
+    flex: 1;
+
+    :deep(.el-progress__text) {
+      font-size: 11px !important;
+      color: var(--absono-text-muted);
+    }
+  }
 }
 
 .no-write-access {
