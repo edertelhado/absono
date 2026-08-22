@@ -15,6 +15,8 @@ if (!fs.existsSync(ICON_PATH)) ICON_PATH = path.join(__dirname, 'icon.png')
 function resolveServerUrl() {
   if (process.env.ABSONO_SERVER_URL) return process.env.ABSONO_SERVER_URL.trim()
   const candidates = []
+  // AppImage: executa de um mount temporário; $APPIMAGE aponta para o arquivo real
+  if (process.env.APPIMAGE) candidates.push(path.join(path.dirname(process.env.APPIMAGE), 'server-url.txt'))
   try { candidates.push(path.join(path.dirname(app.getPath('exe')), 'server-url.txt')) } catch {}
   candidates.push(path.join(__dirname, 'server-url.txt'))
   for (const candidate of candidates) {

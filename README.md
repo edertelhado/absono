@@ -172,6 +172,9 @@ ABSONO_SERVER_URL=http://192.168.18.8:3000 npm run dev
 # Windows zip com a URL embutida no pacote:
 cp server-url.txt.example server-url.txt      # edite com a URL final
 npm run build:win                              # -> release/absono-desktop-*-win-x64.zip
+
+# Linux AppImage (server-url.txt ao lado do .AppImage também funciona):
+npm run build                                  # -> release/*-linux-x86_64.AppImage
 ```
 
 O zip já inclui `server-url.txt.example`: após extrair no Windows, renomeie para
