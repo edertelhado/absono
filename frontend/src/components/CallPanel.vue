@@ -312,7 +312,7 @@ async function toggleFullscreen() {
             </span>
             <video
               v-if="pinnedTile.cameraTrack"
-              :ref="(el) => bindVideo(el, `pin-${pinnedTile!.key}`, pinnedTile!.cameraTrack)"
+              :ref="(el) => { const pt = pinnedTile; if (!pt?.cameraTrack) return; bindVideo(el, `pin-${pt.key}`, pt.cameraTrack) }"
               autoplay
               playsinline
               :muted="pinnedTile.isLocal"
@@ -328,7 +328,7 @@ async function toggleFullscreen() {
               {{ screenShare.name }}
             </span>
             <video
-              :ref="(el) => bindSpotlight(el, screenShare!)"
+              :ref="(el) => { const ss = screenShare; if (!ss) return; bindSpotlight(el, ss) }"
               autoplay
               playsinline
               class="spotlight-video"

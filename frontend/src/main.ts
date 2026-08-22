@@ -29,6 +29,10 @@ authStore.init().catch(() => {}).finally(() => {
     if (authStore.isAuthenticated && router.currentRoute.value.name === 'login') {
       router.replace({ name: 'home' })
     }
-    app.mount('#app')
+    app.config.errorHandler = (err: any, instance: any, info: string) => {
+    const name = instance?.$?.type?.__name || instance?.$?.type?.name || '?'
+    console.error(`[VUE ERR] componente=${name} info=${info}`, err)
+}
+app.mount('#app')
   })
 })

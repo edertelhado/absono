@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, shallowRef, computed, watch } from 'vue'
+import { ref, shallowRef, computed, watch, markRaw } from 'vue'
 import type { RemoteParticipant, LocalParticipant, RemoteVideoTrack, LocalVideoTrack, LocalAudioTrack, RemoteAudioTrack } from 'livekit-client'
 import { Room, RoomEvent, Track, VideoQuality } from 'livekit-client'
 import { KrispNoiseFilter, isKrispNoiseFilterSupported } from '@livekit/krisp-noise-filter'
@@ -9,15 +9,15 @@ import { getScreenShareEncodingParams } from '@/utils/livekit-presets'
 import { sendNotification } from '@/services/notification'
 
 export const useVoiceStore = defineStore('voice', () => {
-  const room = ref<Room | null>(null)
+  const room = shallowRef<Room | null>(null)
   const connected = ref(false)
   const connecting = ref(false)
   const reconnecting = ref(false)
   const currentRoomName = ref<string | null>(null)
   const joinedChannelId = ref<string | null>(null)
 
-  const participants = ref<RemoteParticipant[]>([])
-  const localParticipant = ref<LocalParticipant | null>(null)
+  const participants = shallowRef<RemoteParticipant[]>([])
+  const localParticipant = shallowRef<LocalParticipant | null>(null)
 
   const isMicrophoneEnabled = ref(false)
   const isCameraEnabled = ref(false)
@@ -259,7 +259,7 @@ export const useVoiceStore = defineStore('voice', () => {
       lkRoom.on(RoomEvent.Connected, () => {
         connected.value = true
         reconnecting.value = false
-        localParticipant.value = lkRoom.localParticipant
+        localParticipant.value = markRaw(lkRoom.localParticipant)
         touch()
       })
 
@@ -346,7 +346,7 @@ export const useVoiceStore = defineStore('voice', () => {
       })
 
       await lkRoom.connect(serverUrl, token)
-      room.value = lkRoom
+      room.value = markRaw(lkRoom)
       touch()
 
       // Habilita o microfone na entrada — dispara o pedido de permissão
