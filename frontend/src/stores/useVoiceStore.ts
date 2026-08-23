@@ -6,6 +6,7 @@ import { KrispNoiseFilter, isKrispNoiseFilterSupported } from '@livekit/krisp-no
 import type { KrispNoiseFilterProcessor } from '@livekit/krisp-noise-filter'
 import { livekitService } from '@/services/livekit'
 import { getScreenShareEncodingParams } from '@/utils/livekit-presets'
+import type { ScreenResolution, ScreenFPS } from '@/utils/livekit-presets'
 import { sendNotification } from '@/services/notification'
 
 export const useVoiceStore = defineStore('voice', () => {
@@ -421,57 +422,108 @@ export const useVoiceStore = defineStore('voice', () => {
     }
   }
 
-  async function startScreenShare() {
+  async function startScreenShare(opts?: { resolution?: ScreenResolution; fps?: ScreenFPS; includeAudio?: boolean }) {
     if (!localParticipant.value) return
-    const params = getScreenShareEncodingParams(screenShareResolution.value, screenShareFPS.value)
+    const resolution = opts?.resolution ?? screenShareResolution.value
+    const fps = opts?.fps ?? screenShareFPS.value
+    const includeAudio = opts?.includeAudio ?? true
+    const params = getScreenShareEncodingParams(resolution, fps)
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      const constraints: any = {
         video: {
           width: { ideal: params.width },
           height: { ideal: params.height },
         },
-        audio: {
+      }
+      if (includeAudio) {
+        constraints.audio = {
           channelCount: 2,
           sampleRate: 48000,
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
-        },
-      })
-
-      const videoTrack = stream.getVideoTracks()[0]
-      const audioTrack = stream.getAudioTracks()[0]
-
-      if (!videoTrack) {
-        throw new Error('Nenhuma trilha de video capturada')
-      }
-
-      const videoPub = await localParticipant.value.publishTrack(videoTrack, {
-        source: Track.Source.ScreenShare,
-        videoEncoding: { maxBitrate: params.maxBitrate, maxFramerate: params.maxFramerate },
-        simulcast: true,
-        degradationPreference: 'balanced',
-      })
-
-      if (audioTrack) {
-        await localParticipant.value.publishTrack(audioTrack, {
-          source: Track.Source.ScreenShareAudio,
-        })
-      }
-
-      localScreenShareTrack.value = videoPub?.videoTrack as LocalVideoTrack ?? null
-      isScreenSharing.value = true
-      screenWatchers.value = []
-
-      videoTrack.onended = () => {
-        if (isScreenSharing.value) {
-          stopScreenShare()
         }
       }
+
+      const stream = await navigator.mediaDevices.getDisplayMedia(constraints)
+      await publishScreenShareTracks(stream, params)
     } catch (e) {
       isScreenSharing.value = false
       throw e
     }
+  }
+
+  async function switchScreenShare() {
+    if (!localParticipant.value || !isScreenSharing.value) return
+    const params = getScreenShareEncodingParams(screenShareResolution.value, screenShareFPS.value)
+    try {
+      const constraints: any = {
+        video: {
+          width: { ideal: params.width },
+          height: { ideal: params.height },
+        },
+      }
+
+      const stream = await navigator.mediaDevices.getDisplayMedia(constraints)
+      await replaceScreenShareTracks(stream, params)
+    } catch (e) {
+      throw e
+    }
+  }
+
+  async function publishScreenShareTracks(stream: MediaStream, params: { width: number; height: number; maxBitrate: number; maxFramerate: number }) {
+    if (!localParticipant.value) return
+    const videoTrack = stream.getVideoTracks()[0]
+    const audioTrack = stream.getAudioTracks()[0]
+
+    if (!videoTrack) {
+      throw new Error('Nenhuma trilha de video capturada')
+    }
+
+    const videoPub = await localParticipant.value.publishTrack(videoTrack, {
+      source: Track.Source.ScreenShare,
+      videoEncoding: { maxBitrate: params.maxBitrate, maxFramerate: params.maxFramerate },
+      simulcast: true,
+      degradationPreference: 'balanced',
+    })
+
+    if (audioTrack) {
+      await localParticipant.value.publishTrack(audioTrack, {
+        source: Track.Source.ScreenShareAudio,
+      })
+    }
+
+    localScreenShareTrack.value = videoPub?.videoTrack as LocalVideoTrack ?? null
+    isScreenSharing.value = true
+    screenWatchers.value = []
+
+    videoTrack.onended = () => {
+      if (isScreenSharing.value) {
+        stopScreenShare()
+      }
+    }
+  }
+
+  async function replaceScreenShareTracks(stream: MediaStream, params: { width: number; height: number; maxBitrate: number; maxFramerate: number }) {
+    if (!localParticipant.value) return
+    const lp = localParticipant.value
+    const oldTracks: { pub: any; track: any }[] = []
+
+    for (const pub of Array.from(lp.trackPublications.values())) {
+      if ((pub.source === Track.Source.ScreenShare || pub.source === Track.Source.ScreenShareAudio) && pub.track) {
+        oldTracks.push({ pub, track: pub.track })
+      }
+    }
+
+    for (const { track } of oldTracks) {
+      try {
+        await lp.unpublishTrack(track, true)
+      } catch {}
+    }
+
+    localScreenShareTrack.value = null
+
+    await publishScreenShareTracks(stream, params)
   }
 
   async function stopScreenShare() {
@@ -629,6 +681,7 @@ export const useVoiceStore = defineStore('voice', () => {
     toggleMicrophone,
     toggleCamera,
     startScreenShare,
+    switchScreenShare,
     stopScreenShare,
     getCameraTrack,
     getRemoteScreenShare,

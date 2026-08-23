@@ -6,6 +6,7 @@ import { useChannelStore } from '@/stores/useChannelStore'
 import { useVoiceStore } from '@/stores/useVoiceStore'
 import { ElMessage } from 'element-plus'
 import { RESOLUTION_OPTIONS, FPS_OPTIONS } from '@/utils/livekit-presets'
+import type { ScreenResolution, ScreenFPS } from '@/utils/livekit-presets'
 
 const channelStore = useChannelStore()
 const voiceStore = useVoiceStore()
@@ -16,6 +17,10 @@ const connecting = computed(() => voiceStore.connecting)
 const isActiveCall = computed(() => connected.value && voiceStore.joinedChannelId === channel.value?.id)
 
 const showSettings = ref(false)
+const showShareDialog = ref(false)
+const shareResolution = ref<ScreenResolution>('720p')
+const shareFps = ref<ScreenFPS>(30)
+const shareIncludeAudio = ref(true)
 const pinnedIdentity = ref<string | null>(null)
 
 interface Tile {
@@ -235,16 +240,42 @@ async function toggleCamera() {
 }
 
 async function toggleScreenShare() {
-  try {
-    if (voiceStore.isScreenSharing) {
+  if (voiceStore.isScreenSharing) {
+    try {
       await voiceStore.stopScreenShare()
-    } else {
-      await voiceStore.startScreenShare()
+    } catch (e: any) {
+      console.error('Erro ao parar compartilhamento:', e)
     }
+    return
+  }
+  shareResolution.value = voiceStore.screenShareResolution
+  shareFps.value = voiceStore.screenShareFPS
+  shareIncludeAudio.value = true
+  showShareDialog.value = true
+}
+
+async function confirmScreenShare() {
+  showShareDialog.value = false
+  try {
+    await voiceStore.startScreenShare({
+      resolution: shareResolution.value,
+      fps: shareFps.value,
+      includeAudio: shareIncludeAudio.value,
+    })
   } catch (e: any) {
     console.error('Erro no compartilhamento de tela:', e)
     if (e?.name !== 'NotAllowedError') {
       ElMessage.error('Erro ao compartilhar a tela')
+    }
+  }
+}
+
+async function switchScreen() {
+  try {
+    await voiceStore.switchScreenShare()
+  } catch (e: any) {
+    if (e?.name !== 'NotAllowedError') {
+      ElMessage.error('Erro ao trocar tela')
     }
   }
 }
@@ -449,6 +480,16 @@ async function toggleFullscreen() {
             <el-icon><Monitor /></el-icon>
           </el-button>
 
+          <el-button
+            v-if="voiceStore.isScreenSharing"
+            circle
+            size="large"
+            title="Trocar tela/janela"
+            @click="switchScreen"
+          >
+            <el-icon><Refresh /></el-icon>
+          </el-button>
+
           <el-button type="danger" circle size="large" title="Desconectar" @click="leaveCall">
             <el-icon><Phone /></el-icon>
           </el-button>
@@ -496,28 +537,6 @@ async function toggleFullscreen() {
         </el-select>
       </el-form-item>
 
-      <el-form-item label="Resolução de Compartilhamento">
-        <el-select v-model="voiceStore.screenShareResolution" class="w-full">
-          <el-option
-            v-for="opt in RESOLUTION_OPTIONS"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
-      </el-form-item>
-
-      <el-form-item label="FPS de Compartilhamento">
-        <el-select v-model="voiceStore.screenShareFPS" class="w-full">
-          <el-option
-            v-for="opt in FPS_OPTIONS"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
-      </el-form-item>
-
       <el-form-item label="Áudio">
         <el-switch
           v-model="voiceStore.noiseSuppression"
@@ -527,6 +546,45 @@ async function toggleFullscreen() {
         <div class="setting-hint">Reduz ruído do ambiente no seu microfone (Krisp). Suporte no Chrome/Edge.</div>
       </el-form-item>
     </el-form>
+  </el-dialog>
+
+  <el-dialog v-model="showShareDialog" title="Compartilhar Tela" width="400px" :close-on-click-modal="false">
+    <el-form label-position="top">
+      <el-form-item label="Resolução">
+        <el-select v-model="shareResolution" class="w-full">
+          <el-option
+            v-for="opt in RESOLUTION_OPTIONS"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item label="FPS">
+        <el-select v-model="shareFps" class="w-full">
+          <el-option
+            v-for="opt in FPS_OPTIONS"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item label="Áudio do Desktop">
+        <el-switch
+          v-model="shareIncludeAudio"
+          active-text="Compartilhar áudio do sistema"
+        />
+        <div class="setting-hint">Captura o áudio reproduzido no seu computador (Chrome/Edge). Marque "Compartilhar áudio" no diálogo do navegador.</div>
+      </el-form-item>
+    </el-form>
+
+    <template #footer>
+      <el-button @click="showShareDialog = false">Cancelar</el-button>
+      <el-button type="primary" @click="confirmScreenShare">Iniciar</el-button>
+    </template>
   </el-dialog>
 </template>
 

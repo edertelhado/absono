@@ -45,6 +45,7 @@ async function toggleScreenShare() {
     }
   }
 }
+
 </script>
 
 <template>
