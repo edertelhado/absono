@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
-    "build": "npm run --prefix ../frontend build && electron-builder --linux AppImage",
-    "build:win": "npm run --prefix ../frontend build && electron-builder --win zip"
+    "build": "electron-builder --linux AppImage",
+    "build:win": "electron-builder --win zip"
   },
   "devDependencies": {
     "electron": "^33.0.0",
@@ -22,14 +22,7 @@
     },
     "files": [
       "main.cjs",
-      "picker-preload.cjs",
-      {
-        "from": "../frontend/dist",
-        "to": "dist",
-        "filter": [
-          "**/*"
-        ]
-      }
+      "picker-preload.cjs"
     ],
     "linux": {
       "target": [

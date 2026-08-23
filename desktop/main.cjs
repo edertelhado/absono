@@ -231,6 +231,19 @@ function configureMediaAndCertificates() {
   })
 }
 
+function serverConfigPage(code, desc) {
+  const html = encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8">
+      <style>body{font-family:system-ui;background:#16171b;color:#e6e6e8;display:flex;
+      align-items:center;justify-content:center;height:100vh;margin:0}
+      div{max-width:520px;text-align:center}code{background:#26272c;padding:2px 6px;border-radius:4px}</style></head>
+      <body><div><h2>Não foi possível carregar o Ábsono</h2>
+      <p>O app empacotado precisa apontar para um servidor. Defina a variável
+      <code>ABSONO_SERVER_URL</code> (ex.: <code>https://absono.duckdns.org:4432</code>)
+      ou coloque um <code>server-url.txt</code> ao lado do executável e reabra.</p>
+      <p style="opacity:.6;font-size:12px">${code || ''} ${desc || ''}</p></div></body></html>`)
+  return 'data:text/html;charset=utf-8,' + html
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -251,16 +264,7 @@ function createWindow() {
   // empacotado sem servidor definido: página explicativa em vez de tela branca
   mainWindow.webContents.on('did-fail-load', (_e, code, desc, _url, isMain) => {
     if (!isMain || SERVER_URL || !app.isPackaged) return
-    const html = encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8">
-      <style>body{font-family:system-ui;background:#16171b;color:#e6e6e8;display:flex;
-      align-items:center;justify-content:center;height:100vh;margin:0}
-      div{max-width:520px;text-align:center}code{background:#26272c;padding:2px 6px;border-radius:4px}</style></head>
-      <body><div><h2>Não foi possível carregar o Ábsono</h2>
-      <p>O app empacotado precisa apontar para um servidor. Defina a variável
-      <code>ABSONO_SERVER_URL</code> (ex.: <code>https://absono.duckdns.org:4432</code>)
-      ou coloque um <code>server-url.txt</code> ao lado do executável e reabra.</p>
-      <p style="opacity:.6;font-size:12px">${code} ${desc}</p></div></body></html>`)
-    mainWindow.loadURL('data:text/html;charset=utf-8,' + html)
+    mainWindow.loadURL(serverConfigPage(code, desc))
   })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -277,7 +281,10 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:3000')
     mainWindow.webContents.openDevTools({ mode: 'detach' })
   } else {
-    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'))
+    // Empacotado sem servidor configurado: página guiando a configuração.
+    // O frontend é sempre servido pelo servidor (como num navegador) —
+    // nada de UI embutida no pacote.
+    mainWindow.loadURL(serverConfigPage())
   }
 
   mainWindow.on('close', (event) => {
