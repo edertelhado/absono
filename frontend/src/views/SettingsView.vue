@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { usePresenceStore } from '@/stores/usePresenceStore'
 import { authService } from '@/services/auth'
@@ -50,52 +50,15 @@ const newPassword = ref('')
 const confirmPassword = ref('')
 const passwordLoading = ref(false)
 
-const microphones = ref<MediaDeviceInfo[]>([])
-const speakers = ref<MediaDeviceInfo[]>([])
-const cameras = ref<MediaDeviceInfo[]>([])
-const selectedMic = ref(localStorage.getItem('absono_device_mic') || 'default')
-const selectedSpeaker = ref(localStorage.getItem('absono_device_speaker') || 'default')
-const selectedCamera = ref(localStorage.getItem('absono_device_camera') || 'default')
-
-function persistDevice(kind: 'mic' | 'speaker' | 'camera') {
-  if (kind === 'mic') localStorage.setItem('absono_device_mic', selectedMic.value)
-  if (kind === 'speaker') localStorage.setItem('absono_device_speaker', selectedSpeaker.value)
-  if (kind === 'camera') localStorage.setItem('absono_device_camera', selectedCamera.value)
-}
-
-async function loadDevices() {
-  try {
-    // Pede permissão uma vez para obter os labels dos dispositivos
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
-    stream.getTracks().forEach(t => t.stop())
-  } catch {
-    // Sem permissão: lista aparece sem labels, tudo bem
-  }
-  const devices = await navigator.mediaDevices.enumerateDevices()
-  microphones.value = devices.filter(d => d.kind === 'audioinput')
-  speakers.value = devices.filter(d => d.kind === 'audiooutput')
-  cameras.value = devices.filter(d => d.kind === 'videoinput')
-}
-
-function deviceLabel(device: MediaDeviceInfo, index: number): string {
-  return device.label || `${device.kind === 'videoinput' ? 'Câmera' : 'Dispositivo'} ${index + 1}`
-}
-
 onMounted(async () => {
   if (authStore.user) {
     displayName.value = authStore.user.displayName || ''
     bio.value = authStore.user.bio || ''
   }
-  await loadDevices()
-  navigator.mediaDevices?.addEventListener?.('devicechange', loadDevices)
   if (isAdmin.value) {
     await presenceStore.fetchUsers()
     await loadInvites()
   }
-})
-
-onBeforeUnmount(() => {
-  navigator.mediaDevices?.removeEventListener?.('devicechange', loadDevices)
 })
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
@@ -314,47 +277,6 @@ async function changeUserRole(userId: string, role: UserRole) {
         </div>
       </div>
 
-      <!-- Audio & Video Card -->
-      <div class="card settings-card">
-        <div class="card-header">
-          <span class="card-header-title">Áudio e Vídeo</span>
-        </div>
-        <div class="card-body">
-          <div class="form-group">
-            <label class="form-label">Microfone Padrão</label>
-            <select v-model="selectedMic" class="input" @change="persistDevice('mic')">
-              <option value="default">Padrão do sistema</option>
-              <option v-for="(d, i) in microphones" :key="d.deviceId" :value="d.deviceId">
-                {{ deviceLabel(d, i) }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Alto-falante Padrão</label>
-            <select v-model="selectedSpeaker" class="input" @change="persistDevice('speaker')">
-              <option value="default">Padrão do sistema</option>
-              <option v-for="(d, i) in speakers" :key="d.deviceId" :value="d.deviceId">
-                {{ deviceLabel(d, i) }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Câmera Padrão</label>
-            <select v-model="selectedCamera" class="input" @change="persistDevice('camera')">
-              <option value="default">Nenhuma</option>
-              <option v-for="(d, i) in cameras" :key="d.deviceId" :value="d.deviceId">
-                {{ deviceLabel(d, i) }}
-              </option>
-            </select>
-          </div>
-          <p v-if="!microphones.length && !cameras.length" class="devices-hint">
-            Permita o acesso à câmera/microfone no navegador para listar os dispositivos.
-          </p>
-        </div>
-      </div>
-
       <!-- Manage Users Card (Admin only) -->
       <div v-if="isAdmin" class="card settings-card">
         <div class="card-header">
@@ -496,11 +418,6 @@ async function changeUserRole(userId: string, role: UserRole) {
 .save-btn {
   margin-top: var(--space-lg);
   width: 100%;
-}
-
-.devices-hint {
-  font-size: 12px;
-  color: var(--absono-text-muted);
 }
 
 .avatar-section {
