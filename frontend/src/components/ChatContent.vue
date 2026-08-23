@@ -61,6 +61,20 @@ function onEnterKey() {
   sendMessage()
 }
 
+// ===== Thread =====
+const threadInput = ref('')
+const threadOpen = computed(() => chatStore.threadParentId !== null)
+
+function openThreadFor(message: Message) {
+  chatStore.openThread(message.id)
+}
+
+async function sendThread() {
+  if (!threadInput.value.trim()) return
+  await chatStore.sendThreadMessage(threadInput.value.trim())
+  threadInput.value = ''
+}
+
 const REACTION_EMOJIS = ['👍','❤️','😂','🎉','😮','😢','🔥','👀','✅','❌','🙏','👏','🚀','💯','🤔','😅','😍','🤝','⚡','🐛']
 
 function isOwn(message: Message): boolean {
@@ -433,6 +447,16 @@ onBeforeUnmount(() => {
 
           <div v-else class="message-text md" v-html="renderRichMessage(message.content, knownUsernames)"></div>
 
+          <button
+            v-if="message.threadCount"
+            class="thread-indicator"
+            title="Abrir thread"
+            @click="openThreadFor(message)"
+          >
+            <el-icon><ChatLineRound /></el-icon>
+            {{ message.threadCount }} resposta(s)
+          </button>
+
           <div class="reactions-row" v-if="message.reactions?.length || isOwn(message)">
             <button
               v-for="r in message.reactions"
@@ -503,6 +527,9 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="message-actions" v-if="canModifyMessage(message)">
+            <el-button size="small" text circle :title="message.threadCount ? 'Abrir thread' : 'Responder em thread'" @click.stop="openThreadFor(message)">
+              <el-icon><ChatLineRound /></el-icon>
+            </el-button>
             <el-button size="small" text circle title="Editar mensagem" @click="startEdit(message)">
               <el-icon><Edit /></el-icon>
             </el-button>
@@ -581,6 +608,39 @@ onBeforeUnmount(() => {
 
     <div class="no-write-access" v-else-if="['TEXT', 'DIRECT'].includes(channel?.type ?? '') && !canWrite">
       Você não tem permissão para enviar mensagens neste canal.
+    </div>
+
+    <div v-if="threadOpen" class="thread-panel">
+      <div class="thread-header">
+        <span class="thread-title">Thread</span>
+        <el-button text circle size="small" title="Fechar thread" @click="chatStore.closeThread()">
+          <el-icon><Close /></el-icon>
+        </el-button>
+      </div>
+
+      <div class="thread-messages">
+        <div v-for="tm in chatStore.threadMessages" :key="tm.id" class="thread-msg">
+          <el-avatar :size="24" :src="getAvatarUrl(tm.avatarUrl, tm.username ?? '')" />
+          <div class="thread-msg-body">
+            <span class="thread-msg-author">{{ tm.displayName || tm.username }}</span>
+            <div class="message-text md" v-html="renderRichMessage(tm.content, knownUsernames)"></div>
+          </div>
+        </div>
+        <div v-if="!chatStore.threadMessages.length" class="thread-empty">
+          Nenhuma resposta ainda. Comece a thread!
+        </div>
+      </div>
+
+      <div class="thread-input">
+        <el-input
+          v-model="threadInput"
+          placeholder="Responder na thread..."
+          @keyup.enter="sendThread"
+        />
+        <el-button type="primary" circle size="small" :disabled="!threadInput.trim()" @click="sendThread">
+          <el-icon><Promotion /></el-icon>
+        </el-button>
+      </div>
     </div>
 
     <div v-if="lightboxAttachment" class="lightbox" @click.self="closeLightbox">
@@ -1065,6 +1125,93 @@ onBeforeUnmount(() => {
   :deep(ul), :deep(ol) { margin: 4px 0; padding-left: 22px; }
 
   :deep(hr) { border-color: var(--absono-border); margin: var(--space-sm) 0; }
+}
+
+.thread-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--space-xs);
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--absono-primary);
+  background: var(--absono-primary-subtle);
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: filter 0.12s ease;
+
+  &:hover { filter: brightness(1.12); }
+}
+
+.thread-panel {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  bottom: 0;
+  width: min(380px, 46%);
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  background: var(--absono-bg-base);
+  border-left: 1px solid var(--absono-border);
+}
+
+.thread-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 var(--space-md);
+  border-bottom: 1px solid var(--absono-border);
+  background: var(--absono-surface-1);
+}
+
+.thread-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--absono-text);
+}
+
+.thread-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.thread-msg {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.thread-msg-body { min-width: 0; }
+
+.thread-msg-author {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--absono-text);
+  margin-right: var(--space-xs);
+}
+
+.thread-empty {
+  color: var(--absono-text-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: var(--space-lg) 0;
+}
+
+.thread-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  border-top: 1px solid var(--absono-border);
+  background: var(--absono-surface-1);
 }
 
 .loading-state {

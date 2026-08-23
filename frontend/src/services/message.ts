@@ -16,11 +16,17 @@ export const messageService = {
     return response.data.messages
   },
 
-  async sendMessage(channelId: string, content: string, replyToId?: string): Promise<any> {
+  async sendMessage(channelId: string, content: string, replyToId?: string, parentMessageId?: string): Promise<any> {
     const response = await api.post(`/channels/${channelId}/messages`, {
       content,
       replyToId,
+      parentMessageId,
     })
+    return response.data
+  },
+
+  async getThread(parentMessageId: string): Promise<Message[]> {
+    const response = await api.get(`/messages/${parentMessageId}/thread`)
     return response.data
   },
 

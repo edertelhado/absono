@@ -60,6 +60,26 @@ class MessageController {
         def mentionIds = mentionNames ? userService.getIdsByUsernames(mentionNames) : []
 
         String destination = "/topic/channels/${channelId}".toString()
+
+        if (message.parentMessageId) {
+            // resposta de thread: broadcast na thread + contador para todos
+            messagingTemplate.convertAndSend(destination, [
+                type: 'NEW_MESSAGE',
+                data: message.with { mentions = new ArrayList(mentionIds); it }
+            ])
+            messagingTemplate.convertAndSend(destination, [
+                type: 'THREAD_UPDATE',
+                data: [
+                    messageId   : message.parentMessageId,
+                    threadCount : messageService.countThreadReplies(message.parentMessageId),
+                    lastReplyBy : user.displayName
+                ]
+            ])
+            // em threads notifica apenas menções
+            sendNotifications(channelId, message, user.id, user.displayName, mentionIds as Set)
+            return ResponseEntity.ok(message)
+        }
+
         messagingTemplate.convertAndSend(destination, [
             type: 'NEW_MESSAGE',
             data: message.with {
@@ -72,6 +92,12 @@ class MessageController {
         sendNotifications(channelId, message, user.id, user.displayName, mentionIds as Set)
 
         ResponseEntity.ok(message)
+    }
+
+    @GetMapping('/messages/{id}/thread')
+    ResponseEntity<?> getThread(@PathVariable String id) {
+        def user = userService.getCurrentUser()
+        ResponseEntity.ok(messageService.getThread(id, user.id))
     }
 
     private void sendNotifications(String channelId, Message message, String authorId, String authorName, Set<String> mentionIds) {

@@ -71,6 +71,9 @@ export interface Message {
   userStatus?: UserStatus
   attachments?: MessageAttachment[]
   reactions?: ReactionSummary[]
+
+  parentMessageId?: string
+  threadCount?: number
 }
 
 export interface MessageAttachment {

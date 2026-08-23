@@ -12,6 +12,10 @@ export const useChatStore = defineStore('chat', () => {
   const currentChannelId = ref<string | null>(null)
   const typingUserIds = ref<string[]>([])
 
+  // threads
+  const threadParentId = ref<string | null>(null)
+  const threadMessages = ref<Message[]>([])
+
   const typingTimeouts: Record<string, ReturnType<typeof setTimeout>> = {}
 
   const sortedMessages = computed(() => {
@@ -77,6 +81,21 @@ export const useChatStore = defineStore('chat', () => {
     return await messageService.uploadAttachment(file)
   }
 
+  async function openThread(parentId: string) {
+    threadParentId.value = parentId
+    threadMessages.value = await messageService.getThread(parentId)
+  }
+
+  function closeThread() {
+    threadParentId.value = null
+    threadMessages.value = []
+  }
+
+  async function sendThreadMessage(content: string) {
+    if (!threadParentId.value || !currentChannelId.value) return
+    await messageService.sendMessage(currentChannelId.value, content, undefined, threadParentId.value)
+  }
+
   async function toggleReaction(messageId: string, emoji: string, add: boolean) {
     if (add) {
       await messageService.addReaction(messageId, emoji)
@@ -104,9 +123,34 @@ export const useChatStore = defineStore('chat', () => {
 
     switch (data.type) {
       case 'NEW_MESSAGE':
+        if (data.data?.parentMessageId) {
+          // resposta dentro de uma thread
+          if (data.data.parentMessageId === threadParentId.value) {
+            const dup = threadMessages.value.some(m => m.id === data.data.id)
+            if (!dup) threadMessages.value.push(data.data)
+          }
+          const pIdx = messages.value.findIndex(m => m.id === data.data.parentMessageId)
+          if (pIdx !== -1) {
+            messages.value[pIdx] = {
+              ...messages.value[pIdx],
+              threadCount: (messages.value[pIdx].threadCount ?? 0) + 1,
+            }
+          }
+          if (data.data?.userId) clearTyping(data.data.userId)
+          break
+        }
         messages.value.push(data.data)
         if (data.data?.userId) {
           clearTyping(data.data.userId)
+        }
+        break
+
+      case 'THREAD_UPDATE':
+        {
+          const idx = messages.value.findIndex(m => m.id === data.data?.messageId)
+          if (idx !== -1) {
+            messages.value[idx] = { ...messages.value[idx], threadCount: data.data.threadCount }
+          }
         }
         break
       case 'TYPING':
@@ -174,6 +218,11 @@ export const useChatStore = defineStore('chat', () => {
     loadMoreMessages,
     sendMessage,
     editMessage,
+    threadParentId,
+    threadMessages,
+    openThread,
+    closeThread,
+    sendThreadMessage,
     deleteMessage,
     toggleReaction,
     uploadAttachment,

@@ -34,6 +34,10 @@ interface MessageMapper {
 
     void deleteReactionsByMessageId(String messageId)
 
+    List<Message> findByParentMessageId(String parentId)
+
+    List<Message> countThreadReplies(@Param('ids') List<String> ids)
+
     MessageAttachment findAttachmentById(String id)
 
     int deleteAttachment(String id)

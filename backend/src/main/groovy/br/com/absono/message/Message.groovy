@@ -18,5 +18,7 @@ class Message {
     String userStatus
     List<MessageAttachment> attachments
     List<Map<String, Object>> reactions
+    String parentMessageId
+    Integer threadCount
     List<String> mentions
 }

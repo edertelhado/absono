@@ -31,6 +31,7 @@ class MessageService {
             msg.attachments = messageMapper.findAttachmentsByMessageId(msg.id)
             msg.reactions = getReactionsSummary(msg.id)
         }
+        attachThreadCounts(messages)
         messages.reverse()
     }
 
@@ -47,6 +48,7 @@ class MessageService {
             msg.attachments = messageMapper.findAttachmentsByMessageId(msg.id)
             msg.reactions = getReactionsSummary(msg.id)
         }
+        attachThreadCounts(messages)
         messages
     }
 
@@ -85,6 +87,19 @@ class MessageService {
             throw new BusinessException('Você não tem permissão para enviar mensagens neste canal')
         }
 
+        if (request.parentMessageId) {
+            def parent = messageMapper.findById(request.parentMessageId)
+            if (!parent) {
+                throw new ResourceNotFoundException('Mensagem pai não encontrada')
+            }
+            if (parent.parentMessageId) {
+                throw new BusinessException('Não é possível responder a uma resposta de thread')
+            }
+            if (parent.channelId != request.channelId) {
+                throw new BusinessException('Mensagem pai pertence a outro canal')
+            }
+        }
+
         String id = Ulid.generate()
 
         Message message = new Message(
@@ -93,11 +108,39 @@ class MessageService {
             userId: userId,
             content: request.content,
             replyToId: request.replyToId,
+            parentMessageId: request.parentMessageId ?: null,
             edited: false
         )
 
         messageMapper.insert(message)
         messageMapper.findById(id)
+    }
+
+    List<Message> getThread(String parentId, String userId) {
+        def parent = messageMapper.findById(parentId)
+        if (!parent) {
+            throw new ResourceNotFoundException('Mensagem não encontrada')
+        }
+        def perms = permissionService.getEffectivePermissions(parent.channelId, userId)
+        if (!perms.canRead) {
+            throw new BusinessException('Você não tem permissão para ler esta thread')
+        }
+        messageMapper.findByParentMessageId(parentId)
+    }
+
+    int countThreadReplies(String parentId) {
+        messageMapper.findByParentMessageId(parentId).size()
+    }
+
+    /** Anexa contagem de respostas de thread nas mensagens do fluxo principal. */
+    void attachThreadCounts(List<Message> messages) {
+        if (!messages) return
+        def ids = messages.collect { it.id }
+        def counts = messageMapper.countThreadReplies(ids)
+        counts.each { c ->
+            def target = messages.find { it.id == c.parentMessageId }
+            if (target) target.threadCount = c.threadCount
+        }
     }
 
     @Transactional
@@ -164,4 +207,6 @@ class SendMessageRequest {
     String channelId
     String content
     String replyToId
+
+    String parentMessageId
 }
