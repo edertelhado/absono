@@ -202,17 +202,16 @@ function selectChannel(channel: { id: string }) {
     </nav>
 
     <!-- Mobile sidebar drawer -->
-    <ChannelSidebar
-      v-if="!isDesktop"
-      class="sidebar-mobile"
-      :class="{ open: sidebarOpen }"
-      :channels="channelStore.channels"
-      :current-channel="channelStore.currentChannel"
-      :user="authStore.user"
-      @select-channel="selectChannel"
-      @logout="handleLogout"
-      @open-settings="openSettings"
-    />
+    <div class="sidebar-mobile" :class="{ open: sidebarOpen }">
+      <ChannelSidebar
+        :channels="channelStore.channels"
+        :current-channel="channelStore.currentChannel"
+        :user="authStore.user"
+        @select-channel="selectChannel"
+        @logout="handleLogout"
+        @open-settings="openSettings"
+      />
+    </div>
 
     <!-- Backdrop -->
     <div v-if="sidebarOpen && !isDesktop" class="mobile-backdrop" @click="closeSidebar" />
@@ -320,20 +319,22 @@ function selectChannel(channel: { id: string }) {
 
 /* Mobile sidebar drawer */
 .sidebar-mobile {
-  position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 280px !important;
-  z-index: 60;
-  transform: translateX(-110%);
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4);
-  visibility: hidden;
+  display: none;
 
   &.open {
-    transform: translateX(0);
-    visibility: visible;
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 60;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4);
+  }
+
+  > .channel-sidebar {
+    width: 100%;
+    height: 100%;
   }
 }
 
