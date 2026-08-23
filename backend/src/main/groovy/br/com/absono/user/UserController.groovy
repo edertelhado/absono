@@ -41,6 +41,13 @@ class UserController {
         ResponseEntity.ok(updated)
     }
 
+    @PutMapping('/me/password')
+    ResponseEntity<?> updatePassword(@RequestBody Map body) {
+        def user = userService.getCurrentUser()
+        userService.updatePassword(user.id, body.currentPassword?.toString(), body.newPassword?.toString())
+        ResponseEntity.ok([success: true, message: 'Senha alterada com sucesso'])
+    }
+
     @GetMapping('/users')
     ResponseEntity<?> searchUsers(
         @RequestParam(defaultValue = '') String q,

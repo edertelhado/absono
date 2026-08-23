@@ -85,13 +85,28 @@ onMounted(async () => {
 })
 
 function handleNotification(data: any) {
+  console.log('[NOTIF]', JSON.stringify(data?.data)?.slice(0,160))
   if (data?.type !== 'NEW_MESSAGE' || !data.data) return
 
   const { channelId: msgChannelId, authorId, authorName, channelName, content } = data.data
   const isOwnMessage = authorId === authStore.user?.id
   const isViewingChannel = msgChannelId === (route.params.id as string)
+  const isMentioned = data.data.mentioned === true
 
   if (isOwnMessage) return
+
+  if (isMentioned) {
+    unreadStore.increment(msgChannelId)
+    if (!document.hidden) {
+      import('element-plus').then(({ ElMessage }) => {
+        ElMessage.warning(`${authorName} mencionou você em #${channelName}`)
+      })
+    } else {
+      sendNotification(`@${authorName}`, `#${channelName}: ${content}`)
+    }
+    return
+  }
+
   if (!document.hidden && isViewingChannel) return
 
   if (!isViewingChannel) {

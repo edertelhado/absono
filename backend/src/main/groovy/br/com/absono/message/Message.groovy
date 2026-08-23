@@ -18,4 +18,5 @@ class Message {
     String userStatus
     List<MessageAttachment> attachments
     List<Map<String, Object>> reactions
+    List<String> mentions
 }

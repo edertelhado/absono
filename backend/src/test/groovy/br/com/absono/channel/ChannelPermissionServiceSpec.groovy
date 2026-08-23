@@ -20,7 +20,8 @@ class ChannelPermissionServiceSpec extends Specification {
         def userMapper = Mock(UserMapper)
         def channelMapper = Mock(ChannelMapper)
         def permissionMapper = Mock(ChannelPermissionMapper)
-        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper)
+        def dmService = Mock(DmService)
+        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper, dmService)
 
         userMapper.findById('u1') >> user('u1', UserRole.ADMIN)
 
@@ -36,7 +37,8 @@ class ChannelPermissionServiceSpec extends Specification {
         def userMapper = Mock(UserMapper)
         def channelMapper = Mock(ChannelMapper)
         def permissionMapper = Mock(ChannelPermissionMapper)
-        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper)
+        def dmService = Mock(DmService)
+        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper, dmService)
 
         userMapper.findById('u2') >> user('u2', UserRole.MODERATOR)
         channelMapper.findById('c1') >> new Channel(id: 'c1', createdBy: 'outro')
@@ -53,7 +55,8 @@ class ChannelPermissionServiceSpec extends Specification {
         def userMapper = Mock(UserMapper)
         def channelMapper = Mock(ChannelMapper)
         def permissionMapper = Mock(ChannelPermissionMapper)
-        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper)
+        def dmService = Mock(DmService)
+        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper, dmService)
 
         userMapper.findById('u3') >> user('u3', UserRole.USER)
         channelMapper.findById('c1') >> new Channel(id: 'c1', createdBy: 'u3')
@@ -70,7 +73,8 @@ class ChannelPermissionServiceSpec extends Specification {
         def userMapper = Mock(UserMapper)
         def channelMapper = Mock(ChannelMapper)
         def permissionMapper = Mock(ChannelPermissionMapper)
-        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper)
+        def dmService = Mock(DmService)
+        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper, dmService)
 
         userMapper.findById('u4') >> user('u4', UserRole.USER)
         channelMapper.findById('c1') >> new Channel(id: 'c1', createdBy: 'outro')
@@ -89,7 +93,8 @@ class ChannelPermissionServiceSpec extends Specification {
         def userMapper = Mock(UserMapper)
         def channelMapper = Mock(ChannelMapper)
         def permissionMapper = Mock(ChannelPermissionMapper)
-        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper)
+        def dmService = Mock(DmService)
+        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper, dmService)
 
         userMapper.findById('u5') >> user('u5', UserRole.USER)
         channelMapper.findById('c1') >> new Channel(id: 'c1', createdBy: 'outro')
@@ -108,7 +113,8 @@ class ChannelPermissionServiceSpec extends Specification {
         def userMapper = Mock(UserMapper)
         def channelMapper = Mock(ChannelMapper)
         def permissionMapper = Mock(ChannelPermissionMapper)
-        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper)
+        def dmService = Mock(DmService)
+        def service = new ChannelPermissionService(permissionMapper, userMapper, channelMapper, dmService)
 
         userMapper.findById('u6') >> user('u6', UserRole.USER)
         channelMapper.findById('c1') >> new Channel(id: 'c1', createdBy: 'outro')

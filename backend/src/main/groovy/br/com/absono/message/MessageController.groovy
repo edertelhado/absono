@@ -55,19 +55,26 @@ class MessageController {
         request.channelId = channelId
         def message = messageService.sendMessage(request, user.id)
 
-        // Broadcast to channel
+        // Broadcast to channel (com menções resolvidas para userIds)
+        def mentionNames = (request.content =~ /@([A-Za-z0-9_]{3,30})/).collect { it[1] }.unique()
+        def mentionIds = mentionNames ? userService.getIdsByUsernames(mentionNames) : []
+
         String destination = "/topic/channels/${channelId}".toString()
         messagingTemplate.convertAndSend(destination, [
             type: 'NEW_MESSAGE',
-            data: message
+            data: message.with {
+                reactions = []
+                mentions = new ArrayList(mentionIds)
+                it
+            }
         ])
 
-        sendNotifications(channelId, message, user.id, user.displayName)
+        sendNotifications(channelId, message, user.id, user.displayName, mentionIds as Set)
 
         ResponseEntity.ok(message)
     }
 
-    private void sendNotifications(String channelId, Message message, String authorId, String authorName) {
+    private void sendNotifications(String channelId, Message message, String authorId, String authorName, Set<String> mentionIds) {
         try {
             def channel = channelService.getChannelById(channelId)
             def preview = message.content.length() > 80 ? message.content.substring(0, 80) + '...' : message.content
@@ -82,7 +89,8 @@ class MessageController {
                             channelName: channel.name,
                             authorId: authorId,
                             authorName: authorName,
-                            content: preview
+                            content: preview,
+                            mentioned: mentionIds.contains(recipient.id)
                         ]
                     ])
                 }

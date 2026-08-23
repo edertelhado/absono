@@ -88,6 +88,10 @@ export const authService = {
     await api.post('/auth/logout')
   },
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await api.put('/me/password', { currentPassword, newPassword })
+  },
+
   async getMe(): Promise<User> {
     const response = await api.get('/me')
     return response.data

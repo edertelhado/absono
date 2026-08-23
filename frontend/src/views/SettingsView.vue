@@ -18,6 +18,11 @@ const statusLoading = ref(false)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const avatarUploading = ref(false)
 
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const passwordLoading = ref(false)
+
 const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
   { value: 'ONLINE', label: 'Online' },
   { value: 'AWAY', label: 'Ausente' },
@@ -42,6 +47,33 @@ onMounted(async () => {
     await presenceStore.fetchUsers()
   }
 })
+
+async function savePassword() {
+  if (!currentPassword.value || !newPassword.value) {
+    ElMessage.warning('Preencha a senha atual e a nova senha')
+    return
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    ElMessage.warning('A confirmação não confere com a nova senha')
+    return
+  }
+  if (newPassword.value.length < 6) {
+    ElMessage.warning('A nova senha deve ter pelo menos 6 caracteres')
+    return
+  }
+  passwordLoading.value = true
+  try {
+    await authService.changePassword(currentPassword.value, newPassword.value)
+    ElMessage.success('Senha alterada com sucesso')
+    currentPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || 'Erro ao alterar senha')
+  } finally {
+    passwordLoading.value = false
+  }
+}
 
 async function saveProfile() {
   loading.value = true
@@ -147,6 +179,17 @@ async function changeUserRole(userId: string, role: UserRole) {
         </div>
 
         <el-form @submit.prevent="saveProfile" label-position="top">
+          <el-form-item label="Alterar senha">
+            <div class="password-grid">
+              <el-input v-model="currentPassword" type="password" show-password placeholder="Senha atual" />
+              <el-input v-model="newPassword" type="password" show-password placeholder="Nova senha (mín. 6)" />
+              <el-input v-model="confirmPassword" type="password" show-password placeholder="Confirmar nova senha" />
+              <el-button type="primary" :loading="passwordLoading" @click="savePassword">
+                Alterar senha
+              </el-button>
+            </div>
+          </el-form-item>
+
           <el-form-item label="Status">
             <el-select
               :model-value="authStore.user?.status || 'ONLINE'"
@@ -400,5 +443,12 @@ async function changeUserRole(userId: string, role: UserRole) {
 
 .role-select {
   width: 140px;
+}
+
+.password-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
 }
 </style>

@@ -16,6 +16,10 @@ interface UserMapper {
 
     int updateStatus(@Param('id') String id, @Param('status') String status)
 
+    int updatePassword(@Param('id') String id, @Param('password') String password)
+
+    List<String> findIdsByUsernames(@Param('names') List<String> names)
+
     int markAllOffline()
 
     int updateRole(@Param('id') String id, @Param('role') String role)

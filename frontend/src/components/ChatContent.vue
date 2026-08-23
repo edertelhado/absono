@@ -18,6 +18,8 @@ const authStore = useAuthStore()
 const permissionStore = usePermissionStore()
 const presenceStore = usePresenceStore()
 
+const knownUsernames = computed(() => new Set(presenceStore.users.map(u => u.username.toLowerCase())))
+
 const messageInput = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const messagesContainer = ref<HTMLDivElement | null>(null)
@@ -31,6 +33,33 @@ const loading = computed(() => chatStore.loading)
 const hasMore = computed(() => chatStore.hasMore)
 const canWrite = computed(() => permissionStore.can(channel.value?.id, 'canWrite'))
 const canManage = computed(() => permissionStore.can(channel.value?.id, 'canManage'))
+
+// ===== Autocomplete de menções =====
+const mentionToken = computed(() => {
+  const m = /(^|\s)@([A-Za-z0-9_]*)$/.exec(messageInput.value ?? '')
+  return m ? m[2].toLowerCase() : null
+})
+const mentionMatches = computed(() => {
+  const q = mentionToken.value
+  if (q === null) return []
+  return presenceStore.users
+    .filter(u => u.id !== authStore.user?.id && u.username.toLowerCase().startsWith(q))
+    .slice(0, 6)
+})
+
+const mentionOpen = computed(() => mentionMatches.value.length > 0)
+
+function applyMention(username: string) {
+  messageInput.value = (messageInput.value ?? '').replace(/@([A-Za-z0-9_]*)$/, `@${username} `)
+}
+
+function onEnterKey() {
+  if (mentionOpen.value && mentionMatches.value.length > 0) {
+    applyMention(mentionMatches.value[0].username)
+    return
+  }
+  sendMessage()
+}
 
 const REACTION_EMOJIS = ['👍','❤️','😂','🎉','😮','😢','🔥','👀','✅','❌','🙏','👏','🚀','💯','🤔','😅','😍','🤝','⚡','🐛']
 
@@ -402,7 +431,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div v-else class="message-text md" v-html="renderRichMessage(message.content)"></div>
+          <div v-else class="message-text md" v-html="renderRichMessage(message.content, knownUsernames)"></div>
 
           <div class="reactions-row" v-if="message.reactions?.length || isOwn(message)">
             <button
@@ -516,10 +545,23 @@ onBeforeUnmount(() => {
           accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar"
         />
 
+        <div v-if="mentionOpen && mentionMatches.length" class="mention-popover">
+          <button
+            v-for="u in mentionMatches"
+            :key="u.id"
+            class="mention-option"
+            @mousedown.prevent="applyMention(u.username)"
+          >
+            <el-avatar :size="20" :src="getAvatarUrl(u.avatarUrl, u.username)" />
+            <span class="mention-name">{{ u.displayName }}</span>
+            <small class="mention-username">@{{ u.username }}</small>
+          </button>
+        </div>
+
         <el-input
           v-model="messageInput"
           placeholder="Enviar mensagem..."
-          @keyup.enter="sendMessage"
+          @keyup.enter="onEnterKey"
           @input="onInputTyping"
           size="large"
           class="message-input"
@@ -1101,6 +1143,7 @@ onBeforeUnmount(() => {
 }
 
 .input-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -1117,6 +1160,38 @@ onBeforeUnmount(() => {
   &:hover {
     color: var(--absono-text);
   }
+}
+
+.mention-popover {
+  position: absolute;
+  bottom: var(--space-md);
+  left: var(--space-sm);
+  z-index: 30;
+  min-width: 240px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--absono-surface-1);
+  border: 1px solid var(--absono-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.mention-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: 6px var(--space-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--absono-text);
+
+  &:hover { background: var(--absono-hover); }
+
+  .mention-name { font-size: 13px; font-weight: 500; }
+  .mention-username { margin-left: auto; color: var(--absono-text-muted); font-size: 11px; }
 }
 
 .send-btn {

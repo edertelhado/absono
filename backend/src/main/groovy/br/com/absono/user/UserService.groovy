@@ -105,6 +105,25 @@ class UserService {
     }
 
     @Transactional
+    List<String> getIdsByUsernames(List<String> usernames) {
+        if (!usernames) return []
+        userMapper.findIdsByUsernames(usernames)
+    }
+
+    void updatePassword(String userId, String currentPassword, String newPassword) {
+        def user = userMapper.findById(userId)
+        if (!user) {
+            throw new ResourceNotFoundException('Usuário não encontrado')
+        }
+        if (!passwordEncoder.matches(currentPassword, user.password)) {
+            throw new BusinessException('Senha atual incorreta')
+        }
+        if (!newPassword || newPassword.length() < 6) {
+            throw new BusinessException('A nova senha deve ter pelo menos 6 caracteres')
+        }
+        userMapper.updatePassword(userId, passwordEncoder.encode(newPassword))
+    }
+
     User updateStatus(String userId, String status) {
         UserStatus validStatus
         try {

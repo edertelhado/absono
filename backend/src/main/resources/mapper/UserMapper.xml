@@ -43,6 +43,13 @@
     <update id="markAllOffline">
         UPDATE users SET status = 'OFFLINE', updated_at = NOW() WHERE status != 'OFFLINE'
     </update>
+    <update id="updatePassword">
+        UPDATE users SET password = #{password}, updated_at = NOW() WHERE id = #{id}
+    </update>
+    <select id="findIdsByUsernames" resultType="string">
+        SELECT id FROM users WHERE username IN
+        <foreach item="n" collection="names" open="(" separator="," close=")">#{n}</foreach>
+    </select>
 
     <update id="updateRole">
         UPDATE users SET role = #{role}, updated_at = NOW()
