@@ -30,11 +30,19 @@ if [ -z "$NODE_ID" ]; then
   echo "ERRO: Node ID não encontrado no 'garage status'" >&2
   exit 1
 fi
+
 if G layout assign -z dc1 -c 1G "$NODE_ID" 2>/dev/null; then
-  G layout apply --version 1
-  echo "Layout aplicado (v1) para o node $NODE_ID."
+  echo "Role do node $NODE_ID preparada."
 else
-  echo "Layout já configurado."
+  echo "Role já atribuída."
+fi
+
+CUR=$(G layout show 2>/dev/null | sed -nE 's/.*ersion:? ([0-9]+).*/\1/p' | head -1)
+CUR=${CUR:-0}
+if G layout apply --version $((CUR + 1)) 2>/dev/null; then
+  echo "Layout aplicado (v$((CUR + 1)))."
+else
+  echo "Layout já aplicado (v$CUR), seguindo..."
 fi
 
 echo "==> Importando chave de acesso"
