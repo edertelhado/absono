@@ -159,11 +159,12 @@ watch([tiles, screenShare], () => {
 
 watch(() => channel.value?.id, (id) => {
   const ch = channel.value
-  // só troca de sala ao navegar entre canais de VOZ; canais de texto
-  // mantêm a chamada e o compartilhamento ativos
+  // Navegou para outro canal de VOZ já estando numa chamada => migra
+  // direto pra nova sala (estilo Discord). Canais de texto mantêm a
+  // chamada e o compartilhamento ativos.
   if (ch?.type === 'VOICE' && voiceStore.joinedChannelId && id !== voiceStore.joinedChannelId) {
-    voiceStore.disconnect()
     pinnedIdentity.value = null
+    void joinCall()
   }
 })
 
