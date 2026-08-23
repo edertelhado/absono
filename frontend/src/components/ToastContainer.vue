@@ -14,7 +14,7 @@ const { toasts, dismiss } = useToast()
       <ToastRoot
         v-for="toast in toasts"
         :key="toast.id"
-        :type="toast.type"
+        :data-type="toast.type"
         class="toast-root"
         @close="dismiss(toast.id)"
       >

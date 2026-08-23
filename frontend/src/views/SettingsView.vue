@@ -116,7 +116,7 @@ async function createInvite() {
 
 async function deleteInvite(id: string) {
   try {
-    await confirm({ title: 'Confirmar', message: 'Excluir este convite?', type: 'warning' })
+    await confirm({ title: 'Confirmar', description: 'Excluir este convite?', type: 'warning' })
     await inviteService.deleteInvite(id)
     await loadInvites()
     toast.success('Convite excluido')

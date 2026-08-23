@@ -145,9 +145,9 @@ function openSettings() {
   router.push('/settings')
 }
 
-function selectChannel(channelId: string) {
+function selectChannel(channel: { id: string }) {
   closeSidebar()
-  router.push(`/channel/${channelId}`)
+  router.push(`/channel/${channel.id}`)
 }
 </script>
 
