@@ -25,7 +25,6 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const messagesContainer = ref<HTMLDivElement | null>(null)
 const replyingTo = ref<Message | null>(null)
 const editingMessage = ref<Message | null>(null)
-const editContent = ref('')
 
 const channel = computed(() => channelStore.currentChannel)
 const messages = computed(() => chatStore.messages)
@@ -60,7 +59,11 @@ function onEnterKey(e: KeyboardEvent) {
     applyMention(mentionMatches.value[0].username)
     return
   }
-  sendMessage()
+  if (editingMessage.value) {
+    saveEdit()
+  } else {
+    sendMessage()
+  }
 }
 
 const showPreview = ref(false)
@@ -236,18 +239,26 @@ async function handleFileUpload(event: Event) {
 
 async function startEdit(message: Message) {
   editingMessage.value = message
-  editContent.value = message.content
+  messageInput.value = message.content
+  await nextTick()
+  const textarea = document.querySelector('.message-input textarea') as HTMLTextAreaElement | null
+  textarea?.focus()
 }
 
 async function saveEdit() {
-  if (!editingMessage.value || !editContent.value.trim()) return
+  if (!editingMessage.value || !messageInput.value.trim()) return
   try {
-    await chatStore.editMessage(editingMessage.value.id, editContent.value.trim())
+    await chatStore.editMessage(editingMessage.value.id, messageInput.value.trim())
     editingMessage.value = null
-    editContent.value = ''
+    messageInput.value = ''
   } catch (e: any) {
     ElMessage.error('Erro ao editar mensagem')
   }
+}
+
+function cancelEdit() {
+  editingMessage.value = null
+  messageInput.value = ''
 }
 
 async function deleteMessage(message: Message) {
@@ -436,17 +447,8 @@ onBeforeUnmount(() => {
             <span v-if="message.edited" class="message-edited">(editado)</span>
           </div>
 
-          <div v-if="editingMessage?.id === message.id" class="message-edit">
-            <el-input
-              v-model="editContent"
-              @keyup.enter="saveEdit"
-              @keyup.escape="editingMessage = null"
-              size="small"
-            />
-            <div class="edit-actions">
-              <el-button size="small" text @click="editingMessage = null">Cancelar</el-button>
-              <el-button size="small" type="primary" @click="saveEdit">Salvar</el-button>
-            </div>
+          <div v-if="editingMessage?.id === message.id" class="edit-hint">
+            Editando mensagem... <el-button size="small" text @click="cancelEdit">Cancelar</el-button>
           </div>
 
           <div v-else class="message-text md" v-html="renderRichMessage(message.content, knownUsernames)"></div>
@@ -595,13 +597,26 @@ onBeforeUnmount(() => {
           v-model="messageInput"
           type="textarea"
           :autosize="{ minRows: 1, maxRows: 8 }"
-          placeholder="Enviar mensagem... (Shift+Enter para nova linha)"
+          :placeholder="editingMessage ? 'Editando mensagem... (Enter para salvar, Esc para cancelar)' : 'Enviar mensagem... (Shift+Enter para nova linha)'"
           @keydown.enter.exact="onEnterKey"
+          @keydown.escape="cancelEdit"
           @input="onInputTyping"
           class="message-input"
         />
 
         <el-button
+          v-if="editingMessage"
+          class="send-btn"
+          type="warning"
+          circle
+          @click="saveEdit"
+          :disabled="!messageInput.trim()"
+          title="Salvar edição (Enter)"
+        >
+          <el-icon><Check /></el-icon>
+        </el-button>
+        <el-button
+          v-else
           class="send-btn"
           type="primary"
           circle
@@ -891,6 +906,12 @@ onBeforeUnmount(() => {
   gap: var(--space-xs);
 }
 
+.edit-hint {
+  font-size: 12px;
+  color: var(--absono-primary);
+  margin-bottom: 2px;
+}
+
 .edit-actions {
   display: flex;
   gap: var(--space-xs);
@@ -1109,6 +1130,11 @@ onBeforeUnmount(() => {
   :deep(h4) { font-size: 14px; }
 
   :deep(p) { margin: 2px 0; }
+
+  :deep(strong) {
+    color: var(--absono-text);
+    font-weight: 700;
+  }
 
   :deep(u) { text-underline-offset: 3px; }
 
