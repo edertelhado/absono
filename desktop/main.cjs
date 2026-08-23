@@ -240,6 +240,7 @@ function createWindow() {
     title: 'Ábsono',
     icon: ICON_PATH,
     backgroundColor: '#0a0e14',
+    autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -335,6 +336,9 @@ app.on('before-quit', () => {
 })
 
 app.whenReady().then(() => {
+  // Sem barra de menu padrão do Electron (File/Edit/View…)
+  Menu.setApplicationMenu(null)
+
   configureMediaAndCertificates()
   createWindow()
   createTray()
