@@ -74,6 +74,7 @@ services:
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-absono-livekit-dev-secret-32-chars!!}
       GARAGE_ENDPOINT: "https://${PUBLIC_S3_DOMAIN}:${HTTPS_PORT:-443}"
+      GARAGE_INTERNAL_ENDPOINT: "http://garage:${GARAGE_S3_PORT:-3902}"
       GARAGE_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-garage_access_key}
       GARAGE_SECRET_KEY: ${GARAGE_SECRET_KEY:-garage_secret_key}
       GARAGE_BUCKET: ${GARAGE_BUCKET:-absono}

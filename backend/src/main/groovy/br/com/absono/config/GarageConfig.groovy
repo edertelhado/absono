@@ -18,6 +18,15 @@ class GarageConfig {
     @Value('${garage.endpoint}')
     String endpoint
 
+    /**
+     * Endpoint usado pelas operações server-side do SDK (head/get/put/delete).
+     * Na VPS o endpoint público passa pelo Caddy/hairpin NAT e pode ser
+     * inalcançável de dentro da rede docker; o interno aponta direto pro
+     * serviço. Default: cai no endpoint público (comportamento antigo).
+     */
+    @Value('${garage.internal-endpoint:${garage.endpoint}}')
+    String internalEndpoint
+
     @Value('${garage.access-key}')
     String accessKey
 
@@ -35,7 +44,7 @@ class GarageConfig {
     @Bean
     S3Client s3Client() {
         S3Client.builder()
-            .endpointOverride(URI.create(endpoint))
+            .endpointOverride(URI.create(internalEndpoint))
             .region(Region.of(region))
             .credentialsProvider(credentialsProvider())
             .serviceConfiguration(S3Configuration.builder()
