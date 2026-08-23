@@ -555,21 +555,21 @@ onBeforeUnmount(() => {
                 />
                 <span class="attachment-caption">
                   {{ attachment.fileName }} · {{ formatFileSize(attachment.fileSize) }}
-                  <a :href="downloadUrl(attachment)" class="attachment-download">Baixar</a>
+                  <a :href="downloadUrl(attachment)" target="_blank" rel="noopener" class="attachment-download">Baixar</a>
                 </span>
               </template>
               <template v-else-if="isVideoFile(attachment)">
                 <video :src="attachment.url" controls preload="metadata" class="attachment-video"></video>
                 <span class="attachment-caption">
                   {{ attachment.fileName }} · {{ formatFileSize(attachment.fileSize) }}
-                  <a :href="downloadUrl(attachment)" class="attachment-download">Baixar</a>
+                  <a :href="downloadUrl(attachment)" target="_blank" rel="noopener" class="attachment-download">Baixar</a>
                 </span>
               </template>
               <template v-else-if="isAudioFile(attachment)">
                 <audio :src="attachment.url" controls preload="metadata" class="attachment-audio"></audio>
                 <span class="attachment-caption">
                   {{ attachment.fileName }} · {{ formatFileSize(attachment.fileSize) }}
-                  <a :href="downloadUrl(attachment)" class="attachment-download">Baixar</a>
+                  <a :href="downloadUrl(attachment)" target="_blank" rel="noopener" class="attachment-download">Baixar</a>
                 </span>
               </template>
               <div v-else class="attachment-file">
@@ -580,6 +580,8 @@ onBeforeUnmount(() => {
                 </a>
                 <a
                   :href="downloadUrl(attachment)"
+                  target="_blank"
+                  rel="noopener"
                   class="btn-icon btn-sm attachment-file-download"
                   title="Baixar arquivo"
                 >

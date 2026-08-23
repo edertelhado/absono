@@ -270,6 +270,22 @@ function createWindow() {
     return true
   })
 
+  // Downloads que eventualmente ocorram dentro do app vão para ~/Downloads
+  // sem diálogo. Links de download do frontend abrem _blank e caem no
+  // navegador do sistema (setWindowOpenHandler), com progresso nativo.
+  mainWindow.webContents.session.on('will-download', (_event, item) => {
+    if (!item.getSavePath()) {
+      item.setSavePath(path.join(app.getPath('downloads'), item.getFilename()))
+    }
+  })
+
+  // Nunca navega para fora do servidor configurado — abre no navegador do sistema
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!SERVER_URL || url.startsWith(SERVER_URL)) return
+    event.preventDefault()
+    shell.openExternal(url)
+  })
+
   // empacotado sem servidor definido: página explicativa em vez de tela branca
   mainWindow.webContents.on('did-fail-load', (_e, code, desc, _url, isMain) => {
     if (!isMain || SERVER_URL || !app.isPackaged) return
