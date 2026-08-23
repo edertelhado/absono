@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, shell, session, desktopCapturer } = require('electron')
+const { app, BrowserWindow, Tray, Menu, shell, session, desktopCapturer, ipcMain } = require('electron')
 const path = require('path')
 
 const fs = require('fs')
@@ -77,6 +77,101 @@ let mainWindow = null
 let tray = null
 let quitting = false
 
+// ==================== Seletor de compartilhamento de tela ====================
+// No Linux/X11 não existe seletor nativo do sistema (useSystemPicker falha
+// com "Video was requested, but no video stream was provided"). Este picker
+// próprio lista telas e janelas com miniaturas.
+
+let pickerWindow = null
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]))
+}
+
+function buildPickerHtml(sources) {
+  const items = sources.map((s) => {
+    const thumb = s.thumbnail && !s.thumbnail.isEmpty() ? s.thumbnail.toDataURL() : ''
+    const icon = s.appIcon ? s.appIcon.toDataURL() : ''
+    const name = escapeHtml(s.name || s.id)
+    return `<button class="item" data-id="${escapeHtml(s.id)}">
+      <img class="thumb" src="${thumb}" alt="" />
+      <span class="label">${icon ? `<img class="icon" src="${icon}" alt="" />` : ''}${name}</span>
+    </button>`
+  }).join('')
+
+  return encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8"><style>
+    body{font-family:system-ui,sans-serif;background:#0f1115;color:#e6e8ee;margin:0;display:flex;flex-direction:column;height:100vh;user-select:none}
+    h2{margin:14px 16px;font-size:15px;font-weight:600}
+    .grid{flex:1;overflow:auto;padding:0 16px 8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;align-content:start}
+    .item{background:#1a1d24;border:1px solid #2a2e38;border-radius:10px;padding:8px;cursor:pointer;text-align:left;color:inherit;display:flex;flex-direction:column}
+    .item:hover{border-color:#3b82f6;background:#20242d}
+    .thumb{width:100%;height:96px;object-fit:contain;background:#000;border-radius:6px}
+    .label{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .icon{width:14px;height:14px;flex-shrink:0}
+    footer{padding:10px 16px;border-top:1px solid #2a2e38;display:flex;justify-content:flex-end}
+    button.cancel{background:#26272c;color:#e6e8ee;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px}
+    button.cancel:hover{background:#31333a}
+  </style></head><body>
+    <h2>Escolha o que compartilhar</h2>
+    <div class="grid">${items}</div>
+    <footer><button class="cancel" id="cancel">Cancelar</button></footer>
+    <script>
+      document.querySelectorAll('.item').forEach(function (b) {
+        b.addEventListener('click', function () { window.pickerApi.select(b.dataset.id) })
+      })
+      document.getElementById('cancel').addEventListener('click', function () { window.pickerApi.cancel() })
+    </script>
+  </body></html>`)
+}
+
+function openSharePicker(sources, callback) {
+  let settled = false
+  const done = (result) => {
+    if (settled) return
+    settled = true
+    try { ipcMain.removeAllListeners('screen-share-select') } catch {}
+    try { ipcMain.removeAllListeners('screen-share-cancel') } catch {}
+    if (pickerWindow && !pickerWindow.isDestroyed()) pickerWindow.destroy()
+    pickerWindow = null
+    try { callback(result) } catch {}
+  }
+
+  ipcMain.once('screen-share-select', (_event, id) => {
+    const source = sources.find((s) => s.id === id)
+    if (!source) return done({})
+    // Loopback audio disponível em Windows e macOS
+    if (process.platform === 'win32' || process.platform === 'darwin') {
+      done({ video: source, audio: 'loopback' })
+    } else {
+      done({ video: source })
+    }
+  })
+  ipcMain.once('screen-share-cancel', () => done({}))
+
+  pickerWindow = new BrowserWindow({
+    width: 660,
+    height: 540,
+    title: 'Compartilhar tela ou janela',
+    parent: mainWindow || undefined,
+    modal: !!mainWindow,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    autoHideMenuBar: true,
+    icon: ICON_PATH,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: path.join(__dirname, 'picker-preload.cjs'),
+    },
+  })
+  pickerWindow.on('closed', () => done({}))
+  pickerWindow.loadURL('data:text/html;charset=utf-8,' + buildPickerHtml(sources))
+}
+
 function configureMediaAndCertificates() {
   // Confia em qualquer certificado (auto-assinado, expirado, hostname inválido…)
   app.on('certificate-error', (event, _webContents, _url, _error, _certificate, callback) => {
@@ -100,11 +195,30 @@ function configureMediaAndCertificates() {
   })
   ses.setPermissionCheckHandler((_webContents, permission) => allowedPermissions.has(permission))
 
-  // navigator.mediaDevices.getDisplayMedia() no renderer precisa deste handler
-  // useSystemPicker: true faz o Electron abrir o seletor nativo de tela/janela
-  ses.setDisplayMediaRequestHandler((_request, callback) => {
-    callback({})
-  }, { useSystemPicker: true })
+  // navigator.mediaDevices.getDisplayMedia() no renderer precisa deste handler.
+  // Abre o picker próprio (telas + janelas com miniaturas) — o seletor nativo
+  // do sistema não existe em Linux/X11 e deixava a captura abortar.
+  ses.setDisplayMediaRequestHandler(async (_request, callback) => {
+    if (pickerWindow && !pickerWindow.isDestroyed()) {
+      // Já existe um picker aberto — rejeita silenciosamente
+      try { callback({}) } catch {}
+      return
+    }
+    try {
+      const sources = await desktopCapturer.getSources({
+        types: ['screen', 'window'],
+        thumbnailSize: { width: 320, height: 180 },
+        fetchWindowIcons: true,
+      })
+      if (!sources.length) {
+        try { callback({}) } catch {}
+        return
+      }
+      openSharePicker(sources, callback)
+    } catch {
+      try { callback({}) } catch {}
+    }
+  })
 }
 
 function createWindow() {

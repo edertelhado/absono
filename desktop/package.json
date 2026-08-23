@@ -22,6 +22,7 @@
     },
     "files": [
       "main.cjs",
+      "picker-preload.cjs",
       {
         "from": "../frontend/dist",
         "to": "dist",
