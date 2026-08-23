@@ -1,5 +1,5 @@
 export type ScreenResolution = '480p' | '720p' | '1080p' | '2k' | 'ultrawide'
-export type ScreenFPS = 15 | 30 | 60
+export type ScreenFPS = 15 | 30 | 60 | 75 | 120
 
 interface EncodingParams {
   width: number
@@ -17,11 +17,11 @@ const RESOLUTION_MAP: Record<ScreenResolution, { width: number; height: number }
 }
 
 const BITRATE_MAP: Record<ScreenResolution, Record<ScreenFPS, number>> = {
-  '480p': { 15: 800_000, 30: 1_500_000, 60: 2_000_000 },
-  '720p': { 15: 1_800_000, 30: 3_000_000, 60: 4_500_000 },
-  '1080p': { 15: 3_000_000, 30: 6_000_000, 60: 9_000_000 },
-  '2k': { 15: 5_000_000, 30: 10_000_000, 60: 14_000_000 },
-  'ultrawide': { 15: 6_000_000, 30: 12_000_000, 60: 16_000_000 },
+  '480p': { 15: 800_000, 30: 1_500_000, 60: 2_000_000, 75: 2_500_000, 120: 4_000_000 },
+  '720p': { 15: 1_800_000, 30: 3_000_000, 60: 4_500_000, 75: 5_500_000, 120: 8_000_000 },
+  '1080p': { 15: 3_000_000, 30: 6_000_000, 60: 9_000_000, 75: 11_000_000, 120: 16_000_000 },
+  '2k': { 15: 5_000_000, 30: 10_000_000, 60: 14_000_000, 75: 17_000_000, 120: 24_000_000 },
+  'ultrawide': { 15: 6_000_000, 30: 12_000_000, 60: 16_000_000, 75: 20_000_000, 120: 28_000_000 },
 }
 
 export function getScreenShareEncodingParams(
@@ -51,4 +51,6 @@ export const FPS_OPTIONS: { value: ScreenFPS; label: string }[] = [
   { value: 15, label: '15 FPS' },
   { value: 30, label: '30 FPS' },
   { value: 60, label: '60 FPS' },
+  { value: 75, label: '75 FPS' },
+  { value: 120, label: '120 FPS' },
 ]

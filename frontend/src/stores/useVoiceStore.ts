@@ -29,7 +29,7 @@ export const useVoiceStore = defineStore('voice', () => {
   const selectedVideoInput = ref<string>('')
 
   const screenShareResolution = ref<'480p' | '720p' | '1080p' | '2k' | 'ultrawide'>('720p')
-  const screenShareFPS = ref<15 | 30 | 60>(30)
+  const screenShareFPS = ref<ScreenFPS>(30)
 
   const noiseSuppression = ref(false)
   const mediaToggling = ref(false)
@@ -638,7 +638,7 @@ export const useVoiceStore = defineStore('voice', () => {
     await applyNoiseSuppressionIfEnabled()
   }
 
-  function setScreenShareQuality(resolution: '480p' | '720p' | '1080p' | '2k' | 'ultrawide', fps: 15 | 30 | 60) {
+  function setScreenShareQuality(resolution: ScreenResolution, fps: ScreenFPS) {
     screenShareResolution.value = resolution
     screenShareFPS.value = fps
   }
