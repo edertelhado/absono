@@ -65,12 +65,12 @@ class LiveKitController {
         }
 
         String roomName = "channel-${channel.id}"
-        String participantToken = generateLiveKitToken(user.id, user.displayName, roomName)
+        String participantToken = generateLiveKitToken(user.id, user.displayName ?: user.username, roomName)
 
         // Atualiza o voice state imediatamente para quem entrou aparecer na sidebar
         CompletableFuture.runAsync {
             try {
-                voiceStateService.pollLiveKit()
+                voiceStateService.reconcileFromLiveKit()
             } catch (Exception ignored) {}
         }
 

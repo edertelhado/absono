@@ -21,6 +21,20 @@ export const usePresenceStore = defineStore('presence', () => {
 
   function applyStatus(userId: string, status: UserStatus) {
     statuses.value = { ...statuses.value, [userId]: status }
+    // Usuário desconhecido (registrado depois do nosso load): busca a lista
+    // para ele aparecer — sem isso nunca sairia "invisível"
+    if (!users.value.some(u => u.id === userId)) {
+      scheduleUnknownRefetch()
+    }
+  }
+
+  let refetchTimer: ReturnType<typeof setTimeout> | null = null
+  function scheduleUnknownRefetch() {
+    if (refetchTimer) return
+    refetchTimer = setTimeout(() => {
+      refetchTimer = null
+      fetchUsers()
+    }, 1500)
   }
 
   async function fetchUsers() {
@@ -42,6 +56,9 @@ export const usePresenceStore = defineStore('presence', () => {
     initialized = true
 
     await fetchUsers()
+
+    // Rede de segurança: lista pode ficar defasada (usuário novo, etc.)
+    setInterval(() => { fetchUsers() }, 60_000)
 
     webSocketService.subscribeToPresence((data) => {
       if (data?.type === 'STATUS_CHANGE' && data.data?.userId) {

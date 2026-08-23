@@ -62,7 +62,7 @@ const tiles = computed<Tile[]>(() => {
   for (const p of voiceStore.participants as RemoteParticipant[]) {
     list.push({
       key: p.identity,
-      name: p.name || p.identity,
+      name: displayNameFor(p.identity, p.name),
       isLocal: false,
       cameraTrack: voiceStore.getCameraTrack(p) ?? null,
       micMuted: !p.isMicrophoneEnabled,
@@ -92,6 +92,12 @@ function avatarFor(identity: string): string {
   return getAvatarUrl(user?.avatarUrl, identity === 'own' ? 'Você' : (user?.username || identity))
 }
 
+function displayNameFor(identity: string, fallback?: string): string {
+  if (identity === 'own') return 'Você'
+  const user = presenceStore.users.find(u => u.id === identity)
+  return fallback || user?.displayName || user?.username || identity
+}
+
 const screenShares = computed<ScreenShareInfo[]>(() => {
   void voiceStore.revision
   const list: ScreenShareInfo[] = []
@@ -104,7 +110,7 @@ const screenShares = computed<ScreenShareInfo[]>(() => {
   for (const p of voiceStore.participants as RemoteParticipant[]) {
     const track = voiceStore.getRemoteScreenShare(p)
     if (track) {
-      list.push({ key: `${p.identity}-screen`, identity: p.identity, name: `Tela de ${p.name || p.identity}`, isOwn: false, track })
+      list.push({ key: `${p.identity}-screen`, identity: p.identity, name: `Tela de ${displayNameFor(p.identity, p.name)}`, isOwn: false, track })
     }
   }
   return list
@@ -130,7 +136,7 @@ const watcherNames = computed<string[]>(() => {
   return voiceStore.screenWatchers
     .map(id => {
       const p = (voiceStore.participants as RemoteParticipant[]).find(x => x.identity === id)
-      return p ? (p.name || id) : null
+      return p ? displayNameFor(p.identity, p.name) : null
     })
     .filter((n): n is string => Boolean(n))
 })

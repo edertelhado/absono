@@ -1,4 +1,17 @@
 let permissionGranted = false
+let swRegistration: ServiceWorkerRegistration | null | undefined
+
+async function getSwRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (swRegistration !== undefined) return swRegistration
+  try {
+    swRegistration = 'serviceWorker' in navigator
+      ? ((await navigator.serviceWorker.getRegistration()) ?? null)
+      : null
+  } catch {
+    swRegistration = null
+  }
+  return swRegistration
+}
 
 export async function requestPermission(): Promise<boolean> {
   try {
@@ -30,9 +43,25 @@ export async function sendNotification(title: string, body: string, options?: {
     if (!granted) return
   }
 
+  // Preferir Service Worker: mais confiável com PWA ativa e funciona
+  // mesmo com a aba em segundo plano pesando menos
+  const reg = await getSwRegistration()
+  if (reg) {
+    try {
+      await reg.showNotification(title, {
+        body,
+        icon: options?.icon || '/pwa-192x192.png',
+        tag: options?.channel || title,
+      })
+      return
+    } catch {
+      // cai para o fallback abaixo
+    }
+  }
+
   try {
     if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: options?.icon })
+      new Notification(title, { body, icon: options?.icon, tag: options?.channel })
     }
   } catch (e) {
     console.error('Erro ao enviar notificação:', e)

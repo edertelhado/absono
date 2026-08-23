@@ -380,7 +380,7 @@ export const useVoiceStore = defineStore('voice', () => {
       room.value = markRaw(lkRoom)
       touch()
 
-      // Patch otimista na UI (sidebar) — webhook do servidor corrige depois
+      // Patch otimista na UI (sidebar) — refresh corrige depois
       try {
         const { useAuthStore } = await import('@/stores/useAuthStore')
         const { useVoiceStateStore } = await import('@/stores/useVoiceStateStore')
@@ -388,6 +388,7 @@ export const useVoiceStore = defineStore('voice', () => {
         if (me) {
           useVoiceStateStore().localJoin(me.id, me.displayName || me.username, channelId)
         }
+        setTimeout(() => useVoiceStateStore().refresh(), 1500)
       } catch {}
 
       // Habilita o microfone na entrada — dispara o pedido de permissão
@@ -421,7 +422,10 @@ export const useVoiceStore = defineStore('voice', () => {
         const { useAuthStore } = await import('@/stores/useAuthStore')
         const { useVoiceStateStore } = await import('@/stores/useVoiceStateStore')
         const me = useAuthStore().user
-        if (me) useVoiceStateStore().localLeave(me.id)
+        if (me) {
+          useVoiceStateStore().localLeave(me.id)
+          setTimeout(() => useVoiceStateStore().refresh(), 1500)
+        }
       } catch {}
 
       const lkRoom = room.value

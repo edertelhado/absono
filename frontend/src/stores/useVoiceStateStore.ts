@@ -66,5 +66,15 @@ export const useVoiceStateStore = defineStore('voiceState', () => {
     })
   }
 
-  return { participantsByChannel, totalConnected, init, localLeave, localJoin }
+  /** Busca snapshot fresco — usado após conectar/desconectar para corrigir
+   *  rapidamente qualquer divergência sem esperar webhook/reconciliação */
+  async function refresh() {
+    try {
+      applySnapshot(await livekitService.getVoiceState())
+    } catch {
+      // silencioso — próximo evento corrige
+    }
+  }
+
+  return { participantsByChannel, totalConnected, init, refresh, localLeave, localJoin }
 })

@@ -147,11 +147,18 @@ const textChannels = computed(() => props.channels.filter(c => c.type === 'TEXT'
 const directChannels = computed(() => props.channels.filter(c => c.type === 'DIRECT' && c.active))
 const voiceChannels = computed(() => props.channels.filter(c => c.type === 'VOICE' && c.active))
 
-const onlineUsers = computed(() =>
+const allUsers = computed(() =>
   presenceStore.users
-    .filter(u => u.id !== props.user?.id && presenceStore.isOnline(u.id))
-    .sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username))
+    .filter(u => u.id !== props.user?.id)
+    .slice()
+    .sort((a, b) => {
+      const onlineDiff = (presenceStore.isOnline(b.id) ? 1 : 0) - (presenceStore.isOnline(a.id) ? 1 : 0)
+      if (onlineDiff !== 0) return onlineDiff
+      return (a.displayName || a.username).localeCompare(b.displayName || b.username)
+    })
 )
+
+const onlineCount = computed(() => allUsers.value.filter(u => presenceStore.isOnline(u.id)).length)
 
 function statusClass(status: UserStatus): string {
   return `status-${(status || 'OFFLINE').toLowerCase()}`
@@ -282,17 +289,18 @@ function participantName(p: VoiceParticipant): string {
         </template>
       </div>
 
-      <!-- Online -->
+      <!-- Usuários -->
       <div class="channel-section">
         <div class="section-header" @click="toggleSection('online')">
           <PhCaretDown class="section-chevron" :class="{ collapsed: isCollapsed('online') }" :size="11" />
-          <span class="section-title">Online — {{ onlineUsers.length }}</span>
+          <span class="section-title">Usuários — {{ onlineCount }} online</span>
         </div>
         <template v-if="!isCollapsed('online')">
           <div
-            v-for="u in onlineUsers"
+            v-for="u in allUsers"
             :key="u.id"
             class="online-user"
+            :class="{ offline: !presenceStore.isOnline(u.id) }"
             :title="`Conversar com ${u.displayName || u.username}`"
             @click="startDm(u)"
           >
@@ -302,7 +310,7 @@ function participantName(p: VoiceParticipant): string {
             </div>
             <span class="online-name">{{ u.displayName || u.username }}</span>
           </div>
-          <p v-if="!onlineUsers.length" class="online-empty">Ninguém online</p>
+          <p v-if="!allUsers.length" class="online-empty">Nenhum usuário</p>
         </template>
       </div>
 
@@ -673,6 +681,10 @@ function participantName(p: VoiceParticipant): string {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.online-user.offline {
+  opacity: 0.45;
 }
 
 .online-empty {
