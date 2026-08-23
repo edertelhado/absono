@@ -147,18 +147,26 @@ const textChannels = computed(() => props.channels.filter(c => c.type === 'TEXT'
 const directChannels = computed(() => props.channels.filter(c => c.type === 'DIRECT' && c.active))
 const voiceChannels = computed(() => props.channels.filter(c => c.type === 'VOICE' && c.active))
 
+const STATUS_ORDER: Record<string, number> = {
+  ONLINE: 0,
+  AWAY: 1,
+  DO_NOT_DISTURB: 2,
+  INVISIBLE: 3,
+  OFFLINE: 3,
+}
+
 const allUsers = computed(() =>
   presenceStore.users
     .filter(u => u.id !== props.user?.id)
     .slice()
     .sort((a, b) => {
-      const onlineDiff = (presenceStore.isOnline(b.id) ? 1 : 0) - (presenceStore.isOnline(a.id) ? 1 : 0)
-      if (onlineDiff !== 0) return onlineDiff
+      const pa = STATUS_ORDER[presenceStore.getStatus(a.id)] ?? 3
+      const pb = STATUS_ORDER[presenceStore.getStatus(b.id)] ?? 3
+      if (pa !== pb) return pa - pb
       return (a.displayName || a.username).localeCompare(b.displayName || b.username)
     })
 )
 
-const onlineCount = computed(() => allUsers.value.filter(u => presenceStore.isOnline(u.id)).length)
 
 function statusClass(status: UserStatus): string {
   return `status-${(status || 'OFFLINE').toLowerCase()}`
@@ -293,7 +301,7 @@ function participantName(p: VoiceParticipant): string {
       <div class="channel-section">
         <div class="section-header" @click="toggleSection('online')">
           <PhCaretDown class="section-chevron" :class="{ collapsed: isCollapsed('online') }" :size="11" />
-          <span class="section-title">Usuários — {{ onlineCount }} online</span>
+          <span class="section-title">Usuários</span>
         </div>
         <template v-if="!isCollapsed('online')">
           <div
@@ -311,6 +319,12 @@ function participantName(p: VoiceParticipant): string {
             <span class="online-name">{{ u.displayName || u.username }}</span>
           </div>
           <p v-if="!allUsers.length" class="online-empty">Nenhum usuário</p>
+          <div v-else class="users-legend">
+            <span><i class="status-dot legend-dot status-online" />Online</span>
+            <span><i class="status-dot legend-dot status-away" />Ausente</span>
+            <span><i class="status-dot legend-dot status-do_not_disturb" />Não perturbe</span>
+            <span><i class="status-dot legend-dot status-offline" />Offline</span>
+          </div>
         </template>
       </div>
 
@@ -692,6 +706,31 @@ function participantName(p: VoiceParticipant): string {
   font-size: 12px;
   color: var(--absono-text-muted);
   font-style: italic;
+}
+
+.users-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+  padding: 6px var(--space-md) 2px;
+  border-top: 1px solid var(--absono-border);
+  margin: var(--space-xs) var(--space-xs) 0;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--absono-text-muted);
+  }
+}
+
+.legend-dot {
+  position: static !important;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-width: 0;
 }
 
 .unread-badge {
