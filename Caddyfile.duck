@@ -23,5 +23,18 @@
 		dns duckdns {$DUCKDNS_TOKEN}
 		resolvers 1.1.1.1 8.8.8.8
 	}
+
+	@preflight method OPTIONS
+	handle @preflight {
+		header Access-Control-Allow-Origin "*"
+		header Access-Control-Allow-Methods "GET, PUT, HEAD, OPTIONS"
+		header Access-Control-Allow-Headers "content-type"
+		header Access-Control-Max-Age "3600"
+		respond 204
+	}
+
+	header Access-Control-Allow-Origin "*"
+	header Access-Control-Expose-Headers "ETag, Content-Length, Content-Range"
+
 	reverse_proxy garage:3902
 }

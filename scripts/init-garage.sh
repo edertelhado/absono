@@ -37,15 +37,14 @@ G bucket create "$GARAGE_BUCKET" 2>/dev/null || echo "Bucket já existe."
 echo "==> Autorizando chave no bucket"
 G bucket allow --read --write --owner --key "$GARAGE_ACCESS_KEY" "$GARAGE_BUCKET"
 
-echo "==> Configurando CORS no bucket (upload direto do navegador via URL presignada)"
+echo "==> Removendo CORS do bucket (CORS é tratado pelo Caddy)"
 docker run --rm --network host \
   -e AWS_ACCESS_KEY_ID="$GARAGE_ACCESS_KEY" \
   -e AWS_SECRET_ACCESS_KEY="$GARAGE_SECRET_KEY" \
   amazon/aws-cli:latest \
   --endpoint-url "http://localhost:${GARAGE_S3_PORT}" \
-  s3api put-bucket-cors --bucket "$GARAGE_BUCKET" \
-  --cors-configuration '{"CORSRules":[{"AllowedHeaders":["*"],"AllowedMethods":["GET","PUT","HEAD","OPTIONS"],"AllowedOrigins":["*"],"ExposeHeaders":["ETag"]}]}' \
-  || echo "AVISO: falha ao aplicar CORS — uploads diretos do navegador podem falhar"
+  s3api delete-bucket-cors --bucket "$GARAGE_BUCKET" \
+  || echo "AVISO: nenhum CORS para remover (ok)"
 
 echo "==> Concluído. Resumo:"
 G key info "$GARAGE_ACCESS_KEY" || true

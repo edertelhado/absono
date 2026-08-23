@@ -20,5 +20,17 @@
 # Endpoint S3 do Garage. O Host original PRECISA ser preservado (assinatura SigV4),
 # e o Caddy repassa o Host recebido por padrao.
 {$PUBLIC_S3_DOMAIN} {
+	@preflight method OPTIONS
+	handle @preflight {
+		header Access-Control-Allow-Origin "*"
+		header Access-Control-Allow-Methods "GET, PUT, HEAD, OPTIONS"
+		header Access-Control-Allow-Headers "content-type"
+		header Access-Control-Max-Age "3600"
+		respond 204
+	}
+
+	header Access-Control-Allow-Origin "*"
+	header Access-Control-Expose-Headers "ETag, Content-Length, Content-Range"
+
 	reverse_proxy garage:3902
 }
