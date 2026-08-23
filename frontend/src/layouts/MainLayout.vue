@@ -170,6 +170,7 @@ function selectChannel(channel: { id: string }) {
       <button class="btn-icon" @click="sidebarOpen = !sidebarOpen">
         <PhList :size="20" />
       </button>
+      <img class="mobile-logo" src="/mask-icon.svg" alt="Ábsono" />
       <span class="mobile-header-title">{{ currentChannelName }}</span>
     </header>
 
@@ -264,6 +265,12 @@ function selectChannel(channel: { id: string }) {
   background-color: var(--absono-surface-1);
   border-bottom: 1px solid var(--absono-border);
   z-index: 40;
+}
+
+.mobile-logo {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
 .mobile-header-title {

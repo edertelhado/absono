@@ -344,10 +344,10 @@ function participantName(p: VoiceParticipant): string {
         </DropdownMenuPortal>
       </DropdownMenuRoot>
       <div class="footer-actions">
-        <button class="icon-btn settings-btn" title="Configurações" @click="emit('openSettings')">
+        <button class="btn-icon settings-btn" title="Configurações" @click="emit('openSettings')">
           <PhGearSix :size="16" />
         </button>
-        <button class="icon-btn logout-btn" title="Sair" @click="emit('logout')">
+        <button class="btn-icon logout-btn" title="Sair" @click="emit('logout')">
           <PhSignOut :size="16" />
         </button>
       </div>
@@ -706,6 +706,7 @@ function participantName(p: VoiceParticipant): string {
   padding: var(--space-xs);
   border-radius: var(--radius-md);
   transition: background-color 0.12s ease;
+  flex: 1;
   min-width: 0;
 
   &:hover {
@@ -786,6 +787,7 @@ function participantName(p: VoiceParticipant): string {
   display: flex;
   align-items: center;
   gap: 2px;
+  flex-shrink: 0;
 }
 
 .icon-btn {
