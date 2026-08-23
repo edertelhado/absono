@@ -12,6 +12,13 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 // Captura de tela no Linux/Wayland via xdg-desktop-portal (PipeWire)
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer')
+  // Artefatos de composição no X11 (cantos piscando, janela "furada"
+  // mostrando o wallpaper) em Cinnamon/Muffin e outros WMs.
+  // Desligue com ABSONO_GPU_COMPOSITING=1 se preferir arriscar artefatos
+  // em troca de mais performance.
+  if (process.env.ABSONO_GPU_COMPOSITING !== '1') {
+    app.commandLine.appendSwitch('disable-gpu-compositing')
+  }
 }
 // Empacotado: extraResources copia build/icon.png para <resources>/icon.png
 function resolveIconPath() {
@@ -230,6 +237,7 @@ function createWindow() {
     minHeight: 600,
     title: 'Ábsono',
     icon: ICON_PATH,
+    backgroundColor: '#0a0e14',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
