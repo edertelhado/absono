@@ -2,12 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { ElMessage } from 'element-plus'
+import { useToast } from '@/composables/useToast'
 import api from '@/services/auth'
+import { PhSpinner, PhCircleNotch, PhXCircle, PhInfo } from '@phosphor-icons/vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 const username = ref('')
 const displayName = ref('')
@@ -19,6 +21,8 @@ const inviteLoading = ref(true)
 const inviteError = ref('')
 const inviteExpiresAt = ref('')
 const inviteRemaining = ref(0)
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 
 const inviteCode = ref((route.query.invite as string) || '')
 
@@ -42,17 +46,17 @@ onMounted(async () => {
 
 async function handleRegister() {
   if (!username.value || !displayName.value || !password.value) {
-    ElMessage.warning('Preencha todos os campos')
+    toast.error('Preencha todos os campos')
     return
   }
 
   if (password.value !== confirmPassword.value) {
-    ElMessage.warning('As senhas nao coincidem')
+    toast.error('As senhas nao coincidem')
     return
   }
 
   if (password.value.length < 6) {
-    ElMessage.warning('A senha deve ter pelo menos 6 caracteres')
+    toast.error('A senha deve ter pelo menos 6 caracteres')
     return
   }
 
@@ -61,7 +65,7 @@ async function handleRegister() {
     await authStore.register(username.value, displayName.value, password.value, inviteCode.value)
     router.push('/')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao criar conta')
+    toast.error(e.response?.data?.message || 'Erro ao criar conta')
   } finally {
     loading.value = false
   }
@@ -80,73 +84,76 @@ async function handleRegister() {
         </div>
 
         <div v-if="inviteLoading" class="invite-status">
-          <el-icon class="is-loading" :size="24"><Loading /></el-icon>
+          <PhCircleNotch class="spin" :size="24" />
           <span>Validando convite...</span>
         </div>
 
         <div v-else-if="inviteError" class="invite-error">
-          <el-icon :size="24"><CircleCloseFilled /></el-icon>
+          <PhXCircle :size="24" />
           <span>{{ inviteError }}</span>
           <router-link to="/login" class="back-link">Voltar para o login</router-link>
         </div>
 
         <template v-else>
           <div class="invite-info">
-            <el-icon :size="16"><InfoFilled /></el-icon>
+            <PhInfo :size="16" />
             <span>Convite valido ate {{ inviteExpiresAt }} ({{ inviteRemaining }} uso{{ inviteRemaining !== 1 ? 's' : '' }} restante{{ inviteRemaining !== 1 ? 's' : '' }})</span>
           </div>
 
-          <el-form @submit.prevent="handleRegister" class="register-form">
-            <el-form-item>
-              <el-input
+          <form @submit.prevent="handleRegister" class="register-form">
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input
                 v-model="username"
+                type="text"
+                class="input"
                 placeholder="Username"
-                size="large"
-                prefix-icon="User"
+                autocomplete="username"
               />
-            </el-form-item>
+            </div>
 
-            <el-form-item>
-              <el-input
+            <div class="form-group">
+              <label class="form-label">Nome de exibicao</label>
+              <input
                 v-model="displayName"
+                type="text"
+                class="input"
                 placeholder="Nome de exibicao"
-                size="large"
-                prefix-icon="UserFilled"
               />
-            </el-form-item>
+            </div>
 
-            <el-form-item>
-              <el-input
+            <div class="form-group">
+              <label class="form-label">Senha</label>
+              <input
                 v-model="password"
-                type="password"
+                :type="showPassword ? 'text' : 'password'"
+                class="input"
                 placeholder="Senha"
-                size="large"
-                prefix-icon="Lock"
-                show-password
+                autocomplete="new-password"
               />
-            </el-form-item>
+            </div>
 
-            <el-form-item>
-              <el-input
+            <div class="form-group">
+              <label class="form-label">Confirmar senha</label>
+              <input
                 v-model="confirmPassword"
-                type="password"
+                :type="showConfirmPassword ? 'text' : 'password'"
+                class="input"
                 placeholder="Confirmar senha"
-                size="large"
-                prefix-icon="Lock"
-                show-password
+                autocomplete="new-password"
               />
-            </el-form-item>
+            </div>
 
-            <el-button
-              type="primary"
-              size="large"
-              :loading="loading"
-              class="register-button"
+            <button
+              type="submit"
+              class="btn btn-primary register-button"
+              :disabled="loading"
               @click="handleRegister"
             >
-              Criar conta
-            </el-button>
-          </el-form>
+              <PhSpinner v-if="loading" class="spin" :size="16" />
+              {{ loading ? 'Criando conta...' : 'Criar conta' }}
+            </button>
+          </form>
         </template>
 
         <div class="register-footer">
@@ -282,5 +289,14 @@ async function handleRegister() {
   &:hover {
     color: var(--absono-primary-hover);
   }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
 }
 </style>

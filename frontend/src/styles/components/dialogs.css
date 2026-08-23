@@ -1,0 +1,87 @@
+/* ── Dialog (Reka UI DialogRoot wrapper) ── */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 50;
+  animation: fade-in 0.15s ease;
+
+  &[data-state='closed'] {
+    animation: fade-out 0.15s ease;
+  }
+}
+
+.dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 480px;
+  max-height: 85vh;
+  background-color: var(--absono-surface-1);
+  border: 1px solid var(--absono-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-modal);
+  z-index: 51;
+  padding: var(--space-xl);
+  animation: dialog-in 0.2s ease;
+
+  &[data-state='closed'] {
+    animation: dialog-out 0.15s ease;
+  }
+}
+
+.dialog-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--absono-text);
+  margin-bottom: var(--space-lg);
+}
+
+.dialog-description {
+  font-size: 13px;
+  color: var(--absono-text-secondary);
+  margin-bottom: var(--space-lg);
+}
+
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes dialog-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+}

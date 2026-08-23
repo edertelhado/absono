@@ -1,0 +1,78 @@
+/* ── Dropdown (Reka UI DropdownMenu wrapper) ── */
+.dropdown-content {
+  min-width: 180px;
+  background-color: var(--absono-surface-2);
+  border: 1px solid var(--absono-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xs);
+  box-shadow: var(--shadow-modal);
+  z-index: 100;
+  animation: dropdown-in 0.12s ease;
+
+  &[data-state='closed'] {
+    animation: dropdown-out 0.1s ease;
+  }
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--absono-text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+
+  &[data-highlighted] {
+    background-color: var(--absono-primary-subtle);
+    color: var(--absono-text);
+  }
+
+  &.danger {
+    color: var(--absono-danger);
+    &:hover, &[data-highlighted] {
+      background-color: rgba(235, 87, 87, 0.1);
+    }
+  }
+}
+
+.dropdown-separator {
+  height: 1px;
+  background-color: var(--absono-border);
+  margin: var(--space-xs) 0;
+}
+
+.dropdown-label {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--absono-text-muted);
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropdown-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}

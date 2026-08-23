@@ -9,15 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@element-plus/icons-vue": "^2.3.1",
     "@livekit/krisp-noise-filter": "^0.3.0",
+    "@phosphor-icons/vue": "^2.2.1",
     "@types/markdown-it": "^14.2.0",
     "axios": "^1.7.9",
     "dompurify": "^3.4.14",
-    "element-plus": "^2.9.1",
     "iconify-icon": "^2.3.0",
     "markdown-it": "^15.0.0",
     "pinia": "^2.3.0",
+    "reka-ui": "^2.10.3",
     "sockjs-client": "^1.6.1",
     "stompjs": "^2.3.3",
     "vue": "^3.5.13",
@@ -30,6 +30,7 @@
     "sass": "^1.82.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.0",
+    "vite-plugin-pwa": "^1.3.0",
     "vue-tsc": "^2.2.0"
   }
 }

@@ -1,0 +1,128 @@
+/* ── Switch (Reka UI SwitchRoot wrapper) ── */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.switch-root {
+  width: 36px;
+  height: 20px;
+  background-color: var(--absono-surface-3);
+  border-radius: var(--radius-full);
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  position: relative;
+
+  &[data-state='checked'] {
+    background-color: var(--absono-primary);
+  }
+}
+
+.switch-thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
+  transform: translateX(0);
+
+  &[data-state='checked'] {
+    transform: translateX(16px);
+  }
+}
+
+/* ── Tabs (Reka UI TabsRoot wrapper) ── */
+.tabs-list {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  background-color: var(--absono-surface-2);
+  border-radius: var(--radius-lg);
+}
+
+.tabs-trigger {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--absono-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+
+  &[data-state='active'] {
+    background-color: var(--absono-surface-1);
+    color: var(--absono-text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* ── Progress ── */
+.progress {
+  width: 100%;
+  height: 6px;
+  background-color: var(--absono-surface-3);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-indicator {
+  height: 100%;
+  background-color: var(--absono-primary);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-base);
+}
+
+/* ── Separator ── */
+.separator {
+  height: 1px;
+  background-color: var(--absono-border);
+  width: 100%;
+}
+
+.separator-vertical {
+  width: 1px;
+  height: 100%;
+}
+
+/* ── Scroll area ── */
+.scroll-area {
+  overflow: hidden;
+}
+
+.scroll-area-viewport {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.scrollbar {
+  display: flex;
+  user-select: none;
+  touch-action: none;
+  padding: 2px;
+  transition: background-color var(--transition-fast);
+}
+
+.scrollbar:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.scrollbar-thumb {
+  flex: 1;
+  background-color: var(--absono-border);
+  border-radius: var(--radius-full);
+  position: relative;
+  transition: background-color var(--transition-fast);
+
+  &:hover {
+    background-color: var(--absono-text-muted);
+  }
+}

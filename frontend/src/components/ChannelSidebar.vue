@@ -7,8 +7,35 @@ import { usePresenceStore } from '@/stores/usePresenceStore'
 import { useUnreadStore } from '@/stores/useUnreadStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { getAvatarUrl } from '@/utils'
-import { ElMessageBox, ElMessage } from 'element-plus'
-import { ArrowDown, Plus, Setting, Mute, VideoCamera, SwitchButton, Link } from '@element-plus/icons-vue'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuPortal,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from 'reka-ui'
+import {
+  DialogRoot,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  DialogTitle,
+} from 'reka-ui'
+import {
+  PhCaretDown,
+  PhCaretRight,
+  PhPlus,
+  PhGearSix,
+  PhMicrophoneSlash,
+  PhVideoCamera,
+  PhLink,
+  PhSignOut,
+  PhHash,
+  PhSpeakerHigh,
+  PhUsers,
+} from '@phosphor-icons/vue'
 import ChannelPermissionsDialog from '@/components/ChannelPermissionsDialog.vue'
 import { inviteService } from '@/services/invite'
 
@@ -29,6 +56,8 @@ const voiceStateStore = useVoiceStateStore()
 const presenceStore = usePresenceStore()
 const unreadStore = useUnreadStore()
 const authStore = useAuthStore()
+const toast = useToast()
+const { confirm } = useConfirm()
 
 const STATUS_LABELS: Record<UserStatus, string> = {
   ONLINE: 'Online',
@@ -60,7 +89,7 @@ async function setStatus(status: UserStatus) {
   try {
     await authStore.updateStatus(status)
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao mudar status')
+    toast.error(e.response?.data?.message || 'Erro ao mudar status')
   }
 }
 
@@ -71,9 +100,9 @@ async function generateInvite() {
     const invite = await inviteService.createInvite(10, 1440)
     const link = `${window.location.origin}/register?invite=${invite.code}`
     await navigator.clipboard.writeText(link)
-    ElMessage.success('Link copiado para a área de transferência!')
+    toast.success('Link copiado para a área de transferência!')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao gerar convite')
+    toast.error(e.response?.data?.message || 'Erro ao gerar convite')
   } finally {
     inviteLoading.value = false
   }
@@ -118,7 +147,7 @@ const voiceChannels = computed(() => props.channels.filter(c => c.type === 'VOIC
 
 async function createChannel() {
   if (!newChannelName.value.trim()) {
-    ElMessage.warning('Digite o nome do canal')
+    toast.warning('Digite o nome do canal')
     return
   }
 
@@ -127,9 +156,9 @@ async function createChannel() {
     showCreateChannel.value = false
     newChannelName.value = ''
     newChannelDescription.value = ''
-    ElMessage.success('Canal criado com sucesso')
+    toast.success('Canal criado com sucesso')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao criar canal')
+    toast.error(e.response?.data?.message || 'Erro ao criar canal')
   }
 }
 
@@ -139,19 +168,19 @@ function openCreate(type: 'TEXT' | 'VOICE') {
 }
 
 async function deleteChannel(channel: Channel) {
-  try {
-    await ElMessageBox.confirm(
-      `Tem certeza que deseja excluir o canal #${channel.name}? Todas as mensagens serão perdidas.`,
-      'Excluir canal',
-      {
-        confirmButtonText: 'Excluir',
-        cancelButtonText: 'Cancelar',
-        type: 'warning',
-      }
-    )
-    await channelStore.deleteChannel(channel.id)
-    ElMessage.success('Canal excluído')
-  } catch {}
+  const confirmed = await confirm({
+    title: `Tem certeza que deseja excluir o canal #${channel.name}? Todas as mensagens serão perdidas.`,
+    description: 'Excluir canal',
+    confirmText: 'Excluir',
+    cancelText: 'Cancelar',
+    type: 'danger',
+  })
+  if (confirmed) {
+    try {
+      await channelStore.deleteChannel(channel.id)
+      toast.success('Canal excluído')
+    } catch {}
+  }
 }
 
 function openPermissions(channel: Channel) {
@@ -184,7 +213,7 @@ function participantName(p: VoiceParticipant): string {
         :disabled="inviteLoading"
         @click="generateInvite"
       >
-        <el-icon><Link /></el-icon>
+        <PhLink :size="16" />
       </button>
     </div>
 
@@ -192,12 +221,10 @@ function participantName(p: VoiceParticipant): string {
       <!-- Canais de texto -->
       <div class="channel-section">
         <div class="section-header" @click="toggleSection('text')">
-          <el-icon class="section-chevron" :class="{ collapsed: isCollapsed('text') }">
-            <ArrowDown />
-          </el-icon>
+          <PhCaretDown class="section-chevron" :class="{ collapsed: isCollapsed('text') }" :size="11" />
           <span class="section-title">Canais de texto</span>
           <button v-if="canCreate" class="section-add-btn" title="Criar canal de texto" @click.stop="openCreate('TEXT')">
-            <el-icon><Plus /></el-icon>
+            <PhPlus :size="14" />
           </button>
         </div>
         <template v-if="!isCollapsed('text')">
@@ -208,11 +235,11 @@ function participantName(p: VoiceParticipant): string {
             :class="{ active: currentChannel?.id === channel.id && currentChannel.type === 'TEXT' }"
             @click="emit('selectChannel', channel)"
           >
-            <span class="channel-hash">#</span>
+            <PhHash class="channel-hash" :size="16" />
             <span class="channel-name">{{ channel.name }}</span>
             <span v-if="unreadLabel(channel.id)" class="unread-badge">{{ unreadLabel(channel.id) }}</span>
             <button v-if="canManageChannel(channel)" class="channel-manage" title="Permissões" @click.stop="openPermissions(channel)">
-              <el-icon><Setting /></el-icon>
+              <PhGearSix :size="14" />
             </button>
           </div>
         </template>
@@ -221,9 +248,7 @@ function participantName(p: VoiceParticipant): string {
       <!-- Mensagens diretas -->
       <div class="channel-section" v-if="directChannels.length">
         <div class="section-header" @click="toggleSection('dm')">
-          <el-icon class="section-chevron" :class="{ collapsed: isCollapsed('dm') }">
-            <ArrowDown />
-          </el-icon>
+          <PhCaretDown class="section-chevron" :class="{ collapsed: isCollapsed('dm') }" :size="11" />
           <span class="section-title">Mensagens diretas</span>
         </div>
         <template v-if="!isCollapsed('dm')">
@@ -244,12 +269,10 @@ function participantName(p: VoiceParticipant): string {
       <!-- Canais de voz -->
       <div class="channel-section">
         <div class="section-header" @click="toggleSection('voice')">
-          <el-icon class="section-chevron" :class="{ collapsed: isCollapsed('voice') }">
-            <ArrowDown />
-          </el-icon>
+          <PhCaretDown class="section-chevron" :class="{ collapsed: isCollapsed('voice') }" :size="11" />
           <span class="section-title">Canais de voz</span>
           <button v-if="canCreate" class="section-add-btn" title="Criar canal de voz" @click.stop="openCreate('VOICE')">
-            <el-icon><Plus /></el-icon>
+            <PhPlus :size="14" />
           </button>
         </div>
         <template v-if="!isCollapsed('voice')">
@@ -263,16 +286,14 @@ function participantName(p: VoiceParticipant): string {
               :class="{ active: currentChannel?.id === channel.id && currentChannel.type === 'VOICE' }"
               @click="emit('selectChannel', channel)"
             >
-              <svg class="channel-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4.03v8.05A4.5 4.5 0 0 0 16.5 12zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-              </svg>
+              <PhSpeakerHigh class="channel-icon" :size="16" />
               <span class="channel-name">{{ channel.name }}</span>
               <span
                 v-if="(voiceStateStore.participantsByChannel[channel.id]?.length ?? 0) > 0"
                 class="voice-count"
               >{{ voiceStateStore.participantsByChannel[channel.id].length }}</span>
               <button v-if="canManageChannel(channel)" class="channel-manage" title="Permissões" @click.stop="openPermissions(channel)">
-                <el-icon><Setting /></el-icon>
+                <PhGearSix :size="14" />
               </button>
             </div>
 
@@ -288,8 +309,8 @@ function participantName(p: VoiceParticipant): string {
                   :alt="participantName(p)"
                 />
                 <span class="participant-name">{{ participantName(p) }}</span>
-                <el-icon v-if="p.micMuted" class="participant-mic-muted"><Mute /></el-icon>
-                <el-icon v-else-if="p.cameraOn" class="participant-camera-on"><VideoCamera /></el-icon>
+                <PhMicrophoneSlash v-if="p.micMuted" class="participant-mic-muted" :size="12" />
+                <PhVideoCamera v-else-if="p.cameraOn" class="participant-camera-on" :size="12" />
               </div>
             </div>
           </div>
@@ -298,61 +319,80 @@ function participantName(p: VoiceParticipant): string {
     </div>
 
     <div class="sidebar-footer">
-      <el-dropdown trigger="click" @command="(cmd: any) => setStatus(cmd as UserStatus)">
-        <div class="user-info">
-          <div class="user-avatar-wrapper">
-            <el-avatar :size="32" :src="getAvatarUrl(user?.avatarUrl, user?.username || '')" />
-            <span class="status-dot" :class="myStatusClass()" />
+      <DropdownMenuRoot>
+        <DropdownMenuTrigger as-child>
+          <div class="user-info">
+            <div class="user-avatar-wrapper">
+              <div class="avatar avatar-md">
+                <img :src="getAvatarUrl(user?.avatarUrl, user?.username || '')" />
+              </div>
+              <span class="status-dot" :class="myStatusClass()" />
+            </div>
+            <div class="user-details">
+              <span class="user-display-name">{{ user?.displayName || user?.username }}</span>
+              <span class="user-status-text" :class="myStatusClass()">{{ myStatusLabel() }}</span>
+            </div>
           </div>
-          <div class="user-details">
-            <span class="user-display-name">{{ user?.displayName || user?.username }}</span>
-            <span class="user-status-text" :class="myStatusClass()">{{ myStatusLabel() }}</span>
-          </div>
-        </div>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="ONLINE">🟢 Online</el-dropdown-item>
-            <el-dropdown-item command="AWAY">🟡 Ausente</el-dropdown-item>
-            <el-dropdown-item command="DO_NOT_DISTURB">🔴 Não perturbe</el-dropdown-item>
-            <el-dropdown-item command="INVISIBLE">⚫ Invisível</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
+        </DropdownMenuTrigger>
+        <DropdownMenuPortal>
+          <DropdownMenuContent class="dropdown-content" :side-offset="4" align="start">
+            <DropdownMenuItem class="dropdown-item" @select="setStatus('ONLINE')">🟢 Online</DropdownMenuItem>
+            <DropdownMenuItem class="dropdown-item" @select="setStatus('AWAY')">🟡 Ausente</DropdownMenuItem>
+            <DropdownMenuItem class="dropdown-item" @select="setStatus('DO_NOT_DISTURB')">🔴 Não perturbe</DropdownMenuItem>
+            <DropdownMenuItem class="dropdown-item" @select="setStatus('INVISIBLE')">⚫ Invisível</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenuPortal>
+      </DropdownMenuRoot>
       <div class="footer-actions">
         <button class="icon-btn settings-btn" title="Configurações" @click="emit('openSettings')">
-          <el-icon :size="16"><Setting /></el-icon>
+          <PhGearSix :size="16" />
         </button>
         <button class="icon-btn logout-btn" title="Sair" @click="emit('logout')">
-          <el-icon :size="16"><SwitchButton /></el-icon>
+          <PhSignOut :size="16" />
         </button>
       </div>
     </div>
   </aside>
 
-  <el-dialog
-    v-model="showCreateChannel"
-    title="Criar Canal"
-    width="400px"
-  >
-    <el-form @submit.prevent="createChannel">
-      <el-form-item label="Tipo">
-        <el-radio-group v-model="newChannelType">
-          <el-radio-button value="TEXT">Texto</el-radio-button>
-          <el-radio-button value="VOICE">Voz</el-radio-button>
-        </el-radio-group>
-      </el-form-item>
-      <el-form-item label="Nome">
-        <el-input v-model="newChannelName" placeholder="nome-do-canal" />
-      </el-form-item>
-      <el-form-item label="Descrição">
-        <el-input v-model="newChannelDescription" type="textarea" placeholder="Descrição do canal (opcional)" />
-      </el-form-item>
-    </el-form>
-    <template #footer>
-      <el-button @click="showCreateChannel = false">Cancelar</el-button>
-      <el-button type="primary" @click="createChannel">Criar</el-button>
-    </template>
-  </el-dialog>
+  <DialogRoot v-model:open="showCreateChannel">
+    <DialogPortal>
+      <DialogOverlay class="dialog-overlay" />
+      <DialogContent class="dialog-content">
+        <DialogTitle class="dialog-title">Criar Canal</DialogTitle>
+        <form @submit.prevent="createChannel">
+          <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <div class="radio-group">
+              <button
+                type="button"
+                class="radio-btn"
+                :class="{ active: newChannelType === 'TEXT' }"
+                @click="newChannelType = 'TEXT'"
+              >Texto</button>
+              <button
+                type="button"
+                class="radio-btn"
+                :class="{ active: newChannelType === 'VOICE' }"
+                @click="newChannelType = 'VOICE'"
+              >Voz</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nome</label>
+            <input v-model="newChannelName" class="input" placeholder="nome-do-canal" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Descrição</label>
+            <textarea v-model="newChannelDescription" class="textarea" placeholder="Descrição do canal (opcional)" />
+          </div>
+        </form>
+        <div class="dialog-footer">
+          <button class="btn btn-default" @click="showCreateChannel = false">Cancelar</button>
+          <button class="btn btn-primary" @click="createChannel">Criar</button>
+        </div>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 
   <ChannelPermissionsDialog
     v-if="permissionsChannel"
@@ -450,7 +490,6 @@ function participantName(p: VoiceParticipant): string {
 }
 
 .section-chevron {
-  font-size: 11px;
   color: var(--absono-text-secondary);
   transition: transform 0.12s ease;
 
@@ -523,8 +562,6 @@ function participantName(p: VoiceParticipant): string {
 }
 
 .channel-hash {
-  font-size: 16px;
-  font-weight: 500;
   width: 18px;
   text-align: center;
   color: var(--absono-text-secondary);
@@ -643,13 +680,11 @@ function participantName(p: VoiceParticipant): string {
 }
 
 .participant-mic-muted {
-  font-size: 12px;
   color: var(--absono-dnd);
   flex-shrink: 0;
 }
 
 .participant-camera-on {
-  font-size: 12px;
   color: var(--absono-online);
   flex-shrink: 0;
 }
@@ -774,5 +809,39 @@ function participantName(p: VoiceParticipant): string {
 
 .logout-btn:hover {
   color: var(--absono-dnd) !important;
+}
+
+.radio-group {
+  display: flex;
+  gap: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--absono-border);
+  overflow: hidden;
+}
+
+.radio-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--absono-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+
+  & + & {
+    border-left: 1px solid var(--absono-border);
+  }
+
+  &.active {
+    background-color: var(--absono-primary);
+    color: #fff;
+  }
+
+  &:hover:not(.active) {
+    background-color: var(--absono-hover);
+    color: var(--absono-text);
+  }
 }
 </style>

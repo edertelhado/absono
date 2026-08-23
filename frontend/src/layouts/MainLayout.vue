@@ -11,6 +11,8 @@ import { usePermissionStore } from '@/stores/usePermissionStore'
 import { useUnreadStore } from '@/stores/useUnreadStore'
 import { webSocketService } from '@/services/websocket'
 import { checkPermission, requestPermission, sendNotification } from '@/services/notification'
+import { useToast } from '@/composables/useToast'
+import { PhList, PhUser } from '@phosphor-icons/vue'
 import ChannelSidebar from '@/components/ChannelSidebar.vue'
 import ChatContent from '@/components/ChatContent.vue'
 import UserSidebar from '@/components/UserSidebar.vue'
@@ -27,6 +29,7 @@ const presenceStore = usePresenceStore()
 const voiceStateStore = useVoiceStateStore()
 const permissionStore = usePermissionStore()
 const unreadStore = useUnreadStore()
+const toast = useToast()
 
 // gavetas laterais em telas pequenas
 const channelsOpen = ref(false)
@@ -98,9 +101,7 @@ function handleNotification(data: any) {
   if (isMentioned) {
     unreadStore.increment(msgChannelId)
     if (!document.hidden) {
-      import('element-plus').then(({ ElMessage }) => {
-        ElMessage.warning(`${authorName} mencionou você em #${channelName}`)
-      })
+      toast.warning(`${authorName} mencionou você em #${channelName}`)
     } else {
       sendNotification(`@${authorName}`, `#${channelName}: ${content}`)
     }
@@ -171,10 +172,10 @@ function openSettings() {
 
     <div v-if="channelsOpen || usersOpen" class="mobile-backdrop" @click="closeDrawers"></div>
     <button class="mobile-fab fab-left" title="Canais" @click="channelsOpen = !channelsOpen; usersOpen = false">
-      <el-icon><Menu /></el-icon>
+      <PhList :size="20" />
     </button>
     <button class="mobile-fab fab-right" title="Usuários" @click="usersOpen = !usersOpen; channelsOpen = false">
-      <el-icon><User /></el-icon>
+      <PhUser :size="20" />
     </button>
   </div>
 </template>
@@ -252,6 +253,7 @@ function openSettings() {
   bottom: 14px;
   width: 46px;
   height: 46px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;

@@ -1,0 +1,35 @@
+/* ── Cards ── */
+.card {
+  background-color: var(--absono-surface-1);
+  border: 1px solid var(--absono-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--absono-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-header-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--absono-text);
+}
+
+.card-body {
+  padding: var(--space-lg);
+}
+
+.card-footer {
+  padding: var(--space-lg);
+  border-top: 1px solid var(--absono-border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}

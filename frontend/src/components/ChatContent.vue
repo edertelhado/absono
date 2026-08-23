@@ -9,20 +9,55 @@ import { webSocketService } from '@/services/websocket'
 import { messageService } from '@/services/message'
 import { formatRelativeTime, getAvatarUrl, formatFileSize } from '@/utils'
 import { renderRichMessage } from '@/utils/markdown'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import type { Message, MessageAttachment } from '@/types'
+
+import {
+  PopoverRoot,
+  PopoverTrigger,
+  PopoverPortal,
+  PopoverContent,
+} from 'reka-ui'
+
+import {
+  PhPaperPlaneRight,
+  PhPlus,
+  PhSmiley,
+  PhImage,
+  PhX,
+  PhPencilSimple,
+  PhTrash,
+  PhArrowBendUpLeft,
+  PhAt,
+  PhHash,
+  PhCaretDown,
+  PhMagnifyingGlass,
+  PhWarning,
+  PhFileText,
+  PhFile,
+  PhDownload,
+  PhCheck,
+  PhEye,
+  PhEyeSlash,
+  PhChatCircle,
+  PhSpinner,
+} from '@phosphor-icons/vue'
 
 const chatStore = useChatStore()
 const channelStore = useChannelStore()
 const authStore = useAuthStore()
 const permissionStore = usePermissionStore()
 const presenceStore = usePresenceStore()
+const toast = useToast()
+const confirm = useConfirm()
 
 const knownUsernames = computed(() => new Set(presenceStore.users.map(u => u.username.toLowerCase())))
 
 const messageInput = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const messagesContainer = ref<HTMLDivElement | null>(null)
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const replyingTo = ref<Message | null>(null)
 const editingMessage = ref<Message | null>(null)
 
@@ -64,6 +99,12 @@ function onEnterKey(e: KeyboardEvent) {
   } else {
     sendMessage()
   }
+}
+
+function autoResize(event: Event) {
+  const el = event.target as HTMLTextAreaElement
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px'
 }
 
 const showPreview = ref(false)
@@ -147,7 +188,7 @@ watch(searchQuery, (q) => {
     try {
       searchResults.value = await messageService.searchMessages(channel.value!.id, query)
     } catch (e: any) {
-      ElMessage.error(e.response?.data?.message || 'Erro ao buscar mensagens')
+      toast.error(e.response?.data?.message || 'Erro ao buscar mensagens')
       searchResults.value = []
     } finally {
       searching.value = false
@@ -202,7 +243,7 @@ async function sendMessage() {
     await nextTick()
     scrollToBottom()
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao enviar mensagem')
+    toast.error(e.response?.data?.message || 'Erro ao enviar mensagem')
   }
 }
 
@@ -215,7 +256,7 @@ async function handleFileUpload(event: Event) {
   if (!file) return
 
   if (file.size > 50 * 1024 * 1024) {
-    ElMessage.warning('Arquivo excede o limite de 50MB')
+    toast.warning('Arquivo excede o limite de 50MB')
     return
   }
 
@@ -226,9 +267,9 @@ async function handleFileUpload(event: Event) {
         uploadProgress.value = { pct, name: file.name }
       }
     })
-    ElMessage.success('Arquivo enviado com sucesso')
+    toast.success('Arquivo enviado com sucesso')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao enviar arquivo')
+    toast.error(e.response?.data?.message || 'Erro ao enviar arquivo')
   } finally {
     uploadProgress.value = null
     if (fileInput.value) {
@@ -241,8 +282,7 @@ async function startEdit(message: Message) {
   editingMessage.value = message
   messageInput.value = message.content
   await nextTick()
-  const textarea = document.querySelector('.message-input textarea') as HTMLTextAreaElement | null
-  textarea?.focus()
+  textareaRef.value?.focus()
 }
 
 async function saveEdit() {
@@ -252,7 +292,7 @@ async function saveEdit() {
     editingMessage.value = null
     messageInput.value = ''
   } catch (e: any) {
-    ElMessage.error('Erro ao editar mensagem')
+    toast.error('Erro ao editar mensagem')
   }
 }
 
@@ -262,14 +302,17 @@ function cancelEdit() {
 }
 
 async function deleteMessage(message: Message) {
+  const ok = await confirm.confirm({
+    title: 'Excluir mensagem',
+    description: 'Tem certeza que deseja excluir esta mensagem?',
+    confirmText: 'Excluir',
+    cancelText: 'Cancelar',
+    type: 'warning',
+  })
+  if (!ok) return
   try {
-    await ElMessageBox.confirm('Tem certeza que deseja excluir esta mensagem?', 'Excluir mensagem', {
-      confirmButtonText: 'Excluir',
-      cancelButtonText: 'Cancelar',
-      type: 'warning',
-    })
     await chatStore.deleteMessage(message.id)
-    ElMessage.success('Mensagem excluída')
+    toast.success('Mensagem excluída')
   } catch {}
 }
 
@@ -357,29 +400,26 @@ onBeforeUnmount(() => {
         <span class="header-name">{{ channel.peerName || channel.peerUsername }}</span>
       </template>
       <template v-else>
-        <span class="header-hash">#</span>
+        <span class="header-hash"><PhHash :size="18" /></span>
         <span class="header-name">{{ channel.name }}</span>
       </template>
       <span class="header-divider"></span>
       <span class="header-description" v-if="channel.description">{{ channel.description }}</span>
 
       <div class="header-actions">
-        <el-input
-          v-if="searchVisible"
-          v-model="searchQuery"
-          placeholder="Buscar no canal..."
-          size="small"
-          class="search-input"
-          clearable
-          @keyup.escape="toggleSearch"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-        <el-button text circle size="small" class="search-toggle" @click="toggleSearch">
-          <el-icon><component :is="searchVisible ? 'Close' : 'Search'" /></el-icon>
-        </el-button>
+        <div v-if="searchVisible" class="search-input-wrap">
+          <PhMagnifyingGlass :size="14" class="search-input-icon" />
+          <input
+            v-model="searchQuery"
+            placeholder="Buscar no canal..."
+            class="input search-input"
+            @keyup.escape="toggleSearch"
+          />
+        </div>
+        <button class="btn-icon search-toggle" @click="toggleSearch">
+          <PhX v-if="searchVisible" :size="18" />
+          <PhMagnifyingGlass v-else :size="18" />
+        </button>
       </div>
     </div>
 
@@ -390,7 +430,7 @@ onBeforeUnmount(() => {
 
     <div class="search-results" v-if="searchVisible && searchQuery.trim()">
       <div v-if="searching" class="loading-state">
-        <el-icon class="is-loading"><Loading /></el-icon>
+        <PhSpinner :size="18" class="spinner" />
         <span>Buscando...</span>
       </div>
 
@@ -408,7 +448,9 @@ onBeforeUnmount(() => {
           :key="message.id"
           class="message-wrapper"
         >
-          <el-avatar class="message-avatar" :size="36" :src="getAvatarUrl(message.avatarUrl, message.username || '')" />
+          <div class="avatar avatar-sm message-avatar">
+            <img :src="getAvatarUrl(message.avatarUrl, message.username || '')" :alt="message.username" />
+          </div>
 
           <div class="message-content">
             <div class="message-header">
@@ -428,7 +470,7 @@ onBeforeUnmount(() => {
 
     <div class="messages-container" v-else ref="messagesContainer" @scroll="handleScroll">
       <div v-if="loading && messages.length === 0" class="loading-state">
-        <el-icon class="is-loading"><Loading /></el-icon>
+        <PhSpinner :size="18" class="spinner" />
         <span>Carregando mensagens...</span>
       </div>
 
@@ -438,7 +480,9 @@ onBeforeUnmount(() => {
         class="message-wrapper"
         :class="{ own: isOwnMessage(message) }"
       >
-        <el-avatar class="message-avatar" :size="36" :src="getAvatarUrl(message.avatarUrl, message.username || '')" />
+        <div class="avatar avatar-sm message-avatar">
+          <img :src="getAvatarUrl(message.avatarUrl, message.username || '')" :alt="message.username" />
+        </div>
 
         <div class="message-content">
           <div class="message-header">
@@ -448,7 +492,7 @@ onBeforeUnmount(() => {
           </div>
 
           <div v-if="editingMessage?.id === message.id" class="edit-hint">
-            Editando mensagem... <el-button size="small" text @click="cancelEdit">Cancelar</el-button>
+            Editando mensagem... <button class="btn btn-ghost btn-sm" @click="cancelEdit">Cancelar</button>
           </div>
 
           <div v-else class="message-text md" v-html="renderRichMessage(message.content, knownUsernames)"></div>
@@ -459,7 +503,7 @@ onBeforeUnmount(() => {
             title="Abrir thread"
             @click="openThreadFor(message)"
           >
-            <el-icon><ChatLineRound /></el-icon>
+            <PhChatCircle :size="14" />
             {{ message.threadCount }} resposta(s)
           </button>
 
@@ -475,21 +519,25 @@ onBeforeUnmount(() => {
               <span class="reaction-count">{{ r.count }}</span>
             </button>
 
-            <el-popover trigger="click" :width="264" placement="top-start">
-              <template #reference>
+            <PopoverRoot>
+              <PopoverTrigger as-child>
                 <button class="reaction-add" title="Adicionar reação">
-                  <el-icon><Plus /></el-icon>
+                  <PhPlus :size="14" />
                 </button>
-              </template>
-              <div class="emoji-grid">
-                <button
-                  v-for="e in REACTION_EMOJIS"
-                  :key="e"
-                  class="emoji-option"
-                  @click="addReaction(message, e)"
-                >{{ e }}</button>
-              </div>
-            </el-popover>
+              </PopoverTrigger>
+              <PopoverPortal>
+                <PopoverContent side="top" :side-offset="4" :align="'start'" class="popover-content">
+                  <div class="emoji-grid">
+                    <button
+                      v-for="e in REACTION_EMOJIS"
+                      :key="e"
+                      class="emoji-option"
+                      @click="addReaction(message, e)"
+                    >{{ e }}</button>
+                  </div>
+                </PopoverContent>
+              </PopoverPortal>
+            </PopoverRoot>
           </div>
 
           <div v-if="message.attachments?.length" class="message-attachments">
@@ -525,7 +573,7 @@ onBeforeUnmount(() => {
                 </span>
               </template>
               <a v-else :href="downloadUrl(attachment)" class="attachment-file">
-                <el-icon><Document /></el-icon>
+                <PhFile :size="18" />
                 <span class="attachment-name">{{ attachment.fileName }}</span>
                 <span class="attachment-size">{{ formatFileSize(attachment.fileSize) }}</span>
               </a>
@@ -533,16 +581,16 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="message-actions">
-            <el-button size="small" text circle :title="message.threadCount ? 'Abrir thread' : 'Responder em thread'" @click.stop="openThreadFor(message)">
-              <el-icon><ChatLineRound /></el-icon>
-            </el-button>
+            <button class="btn-icon btn-sm" :title="message.threadCount ? 'Abrir thread' : 'Responder em thread'" @click.stop="openThreadFor(message)">
+              <PhChatCircle :size="16" />
+            </button>
             <template v-if="canModifyMessage(message)">
-              <el-button size="small" text circle title="Editar mensagem" @click="startEdit(message)">
-                <el-icon><Edit /></el-icon>
-              </el-button>
-              <el-button size="small" text circle title="Excluir mensagem" @click="deleteMessage(message)">
-                <el-icon><Delete /></el-icon>
-              </el-button>
+              <button class="btn-icon btn-sm" title="Editar mensagem" @click="startEdit(message)">
+                <PhPencilSimple :size="16" />
+              </button>
+              <button class="btn-icon btn-sm" title="Excluir mensagem" @click="deleteMessage(message)">
+                <PhTrash :size="16" />
+              </button>
             </template>
           </div>
         </div>
@@ -551,27 +599,25 @@ onBeforeUnmount(() => {
 
     <div class="chat-input-area" v-if="['TEXT', 'DIRECT'].includes(channel?.type ?? '') && canWrite">
       <div v-if="uploadProgress" class="upload-progress">
-        <el-icon class="is-loading"><Loading /></el-icon>
+        <PhSpinner :size="16" class="spinner" />
         <span class="upload-name">{{ uploadProgress.name }}</span>
-        <el-progress
-          :percentage="uploadProgress.pct"
-          :stroke-width="6"
-          :show-text="true"
-          class="upload-bar"
-        />
+        <div class="progress upload-bar">
+          <div class="progress-indicator" :style="{ width: uploadProgress.pct + '%' }"></div>
+        </div>
+        <span class="upload-pct">{{ uploadProgress.pct }}%</span>
       </div>
 
       <div class="reply-indicator" v-if="replyingTo">
         <span><strong>{{ replyingTo.displayName || replyingTo.username }}</strong></span>
-        <el-button text circle size="small" @click="replyingTo = null">
-          <el-icon><Close /></el-icon>
-        </el-button>
+        <button class="btn-icon btn-sm" @click="replyingTo = null">
+          <PhX :size="14" />
+        </button>
       </div>
 
       <div class="input-row">
-        <el-button class="attach-btn" text circle :disabled="uploading" @click="fileInput?.click()">
-          <el-icon><Upload /></el-icon>
-        </el-button>
+        <button class="btn-icon attach-btn" :disabled="uploading" @click="fileInput?.click()">
+          <PhImage :size="20" />
+        </button>
         <input
           ref="fileInput"
           type="file"
@@ -587,51 +633,50 @@ onBeforeUnmount(() => {
             class="mention-option"
             @mousedown.prevent="applyMention(u.username)"
           >
-            <el-avatar :size="20" :src="getAvatarUrl(u.avatarUrl, u.username)" />
+            <div class="avatar avatar-sm">
+              <img :src="getAvatarUrl(u.avatarUrl, u.username)" :alt="u.username" />
+            </div>
             <span class="mention-name">{{ u.displayName }}</span>
             <small class="mention-username">@{{ u.username }}</small>
           </button>
         </div>
 
-        <el-input
+        <textarea
+          ref="textareaRef"
           v-model="messageInput"
-          type="textarea"
-          :autosize="{ minRows: 1, maxRows: 8 }"
           :placeholder="editingMessage ? 'Editando mensagem... (Enter para salvar, Esc para cancelar)' : 'Enviar mensagem... (Shift+Enter para nova linha)'"
+          class="textarea message-textarea"
+          rows="1"
           @keydown.enter.exact="onEnterKey"
           @keydown.escape="cancelEdit"
-          @input="onInputTyping"
-          class="message-input"
-        />
+          @input="(e: Event) => { onInputTyping(); autoResize(e); }"
+        ></textarea>
 
-        <el-button
+        <button
           v-if="editingMessage"
-          class="send-btn"
-          type="warning"
-          circle
+          class="btn btn-primary btn-icon send-btn"
           @click="saveEdit"
           :disabled="!messageInput.trim()"
           title="Salvar edição (Enter)"
         >
-          <el-icon><Check /></el-icon>
-        </el-button>
-        <el-button
+          <PhCheck :size="18" />
+        </button>
+        <button
           v-else
-          class="send-btn"
-          type="primary"
-          circle
+          class="btn btn-primary btn-icon send-btn"
           @click="sendMessage"
           :disabled="!messageInput.trim()"
         >
-          <el-icon><Promotion /></el-icon>
-        </el-button>
+          <PhPaperPlaneRight :size="18" />
+        </button>
       </div>
 
       <div v-if="messageInput.trim()" class="input-footer">
-        <el-button text size="small" @click="showPreview = !showPreview">
-          <el-icon><View v-if="!showPreview" /><Hide v-else /></el-icon>
+        <button class="btn btn-ghost btn-sm" @click="showPreview = !showPreview">
+          <PhEyeSlash v-if="!showPreview" :size="14" />
+          <PhEye v-else :size="14" />
           {{ showPreview ? 'Ocultar preview' : 'Preview Markdown' }}
-        </el-button>
+        </button>
       </div>
 
       <div v-if="showPreview && messageInput.trim()" class="markdown-preview">
@@ -646,14 +691,16 @@ onBeforeUnmount(() => {
     <div v-if="threadOpen" class="thread-panel">
       <div class="thread-header">
         <span class="thread-title">Thread</span>
-        <el-button text circle size="small" title="Fechar thread" @click="chatStore.closeThread()">
-          <el-icon><Close /></el-icon>
-        </el-button>
+        <button class="btn-icon btn-sm" title="Fechar thread" @click="chatStore.closeThread()">
+          <PhX :size="16" />
+        </button>
       </div>
 
       <div class="thread-messages">
         <div v-for="tm in chatStore.threadMessages" :key="tm.id" class="thread-msg">
-          <el-avatar :size="24" :src="getAvatarUrl(tm.avatarUrl, tm.username ?? '')" />
+          <div class="avatar avatar-sm">
+            <img :src="getAvatarUrl(tm.avatarUrl, tm.username ?? '')" :alt="tm.username" />
+          </div>
           <div class="thread-msg-body">
             <span class="thread-msg-author">{{ tm.displayName || tm.username }}</span>
             <div class="message-text md" v-html="renderRichMessage(tm.content, knownUsernames)"></div>
@@ -665,20 +712,21 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="thread-input">
-        <el-input
+        <input
           v-model="threadInput"
+          class="input"
           placeholder="Responder na thread..."
           @keyup.enter="sendThread"
         />
-        <el-button type="primary" circle size="small" :disabled="!threadInput.trim()" @click="sendThread">
-          <el-icon><Promotion /></el-icon>
-        </el-button>
+        <button class="btn btn-primary btn-icon btn-sm" :disabled="!threadInput.trim()" @click="sendThread">
+          <PhPaperPlaneRight :size="16" />
+        </button>
       </div>
     </div>
 
     <div v-if="lightboxAttachment" class="lightbox" @click.self="closeLightbox">
       <button class="lightbox-close" @click="closeLightbox">
-        <el-icon><Close /></el-icon>
+        <PhX :size="20" />
       </button>
       <img :src="lightboxAttachment.url" :alt="lightboxAttachment.fileName" />
       <div class="lightbox-caption">{{ lightboxAttachment.fileName }}</div>
@@ -713,8 +761,7 @@ onBeforeUnmount(() => {
 }
 
 .header-hash {
-  font-size: 18px;
-  font-weight: 600;
+  display: inline-flex;
   color: var(--absono-text-muted);
 }
 
@@ -744,13 +791,21 @@ onBeforeUnmount(() => {
   gap: var(--space-xs);
 }
 
-.search-input {
-  width: 220px;
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 
-  :deep(.el-input__wrapper) {
-    background-color: var(--absono-surface-2);
-    box-shadow: none;
-    border: 1px solid var(--absono-border);
+  .search-input-icon {
+    position: absolute;
+    left: 10px;
+    color: var(--absono-text-muted);
+    pointer-events: none;
+  }
+
+  .search-input {
+    padding-left: 32px;
+    width: 220px;
   }
 }
 
@@ -900,22 +955,10 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
-.message-edit {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
 .edit-hint {
   font-size: 12px;
   color: var(--absono-primary);
   margin-bottom: 2px;
-}
-
-.edit-actions {
-  display: flex;
-  gap: var(--space-xs);
-  justify-content: flex-end;
 }
 
 .message-actions {
@@ -1267,9 +1310,13 @@ onBeforeUnmount(() => {
   color: var(--absono-text-muted);
 }
 
-.load-more {
-  text-align: center;
-  padding: var(--space-sm);
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .chat-input-area {
@@ -1299,11 +1346,13 @@ onBeforeUnmount(() => {
 
   .upload-bar {
     flex: 1;
+  }
 
-    :deep(.el-progress__text) {
-      font-size: 11px !important;
-      color: var(--absono-text-muted);
-    }
+  .upload-pct {
+    font-size: 11px;
+    color: var(--absono-text-muted);
+    min-width: 32px;
+    text-align: right;
   }
 }
 
@@ -1390,16 +1439,20 @@ onBeforeUnmount(() => {
   height: 36px;
 }
 
-.message-input {
+.message-textarea {
   flex: 1;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  resize: none;
+  padding: 4px 0;
+  line-height: 1.5;
+  min-height: 24px;
+  max-height: 200px;
 
-  :deep(.el-textarea__inner) {
-    background: transparent;
+  &:focus {
+    outline: none;
     box-shadow: none;
-    border: none;
-    resize: none;
-    padding: 4px 0;
-    line-height: 1.5;
   }
 }
 
@@ -1419,5 +1472,13 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   font-size: 14px;
   color: var(--absono-text);
+}
+
+:deep(.popover-content) {
+  background: var(--absono-surface-1);
+  border: 1px solid var(--absono-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  padding: var(--space-sm);
 }
 </style>

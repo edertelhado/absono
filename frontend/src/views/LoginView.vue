@@ -2,18 +2,21 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { ElMessage } from 'element-plus'
+import { useToast } from '@/composables/useToast'
+import { PhSpinner } from '@phosphor-icons/vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const toast = useToast()
 
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
+const showPassword = ref(false)
 
 async function handleLogin() {
   if (!username.value || !password.value) {
-    ElMessage.warning('Preencha todos os campos')
+    toast.error('Preencha todos os campos')
     return
   }
 
@@ -22,7 +25,7 @@ async function handleLogin() {
     await authStore.login(username.value, password.value)
     router.push('/')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao fazer login')
+    toast.error(e.response?.data?.message || 'Erro ao fazer login')
   } finally {
     loading.value = false
   }
@@ -40,37 +43,39 @@ async function handleLogin() {
           <p class="login-subtitle">Entre na sua conta para continuar</p>
         </div>
 
-        <el-form @submit.prevent="handleLogin" class="login-form">
-          <el-form-item>
-            <el-input
+        <form @submit.prevent="handleLogin" class="login-form">
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <input
               v-model="username"
+              type="text"
+              class="input"
               placeholder="Username"
-              size="large"
-              prefix-icon="User"
+              autocomplete="username"
             />
-          </el-form-item>
+          </div>
 
-          <el-form-item>
-            <el-input
+          <div class="form-group">
+            <label class="form-label">Senha</label>
+            <input
               v-model="password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
+              class="input"
               placeholder="Senha"
-              size="large"
-              prefix-icon="Lock"
-              show-password
+              autocomplete="current-password"
             />
-          </el-form-item>
+          </div>
 
-          <el-button
-            type="primary"
-            size="large"
-            :loading="loading"
-            class="login-button"
+          <button
+            type="submit"
+            class="btn btn-primary login-button"
+            :disabled="loading"
             @click="handleLogin"
           >
-            Entrar
-          </el-button>
-        </el-form>
+            <PhSpinner v-if="loading" class="spin" :size="16" />
+            {{ loading ? 'Entrando...' : 'Entrar' }}
+          </button>
+        </form>
 
         <div class="login-footer">
           <span class="login-footer-text">Precisa de acesso? Solicite um convite ao administrador.</span>
@@ -161,5 +166,14 @@ async function handleLogin() {
   &:hover {
     color: var(--absono-primary-hover);
   }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
 }
 </style>

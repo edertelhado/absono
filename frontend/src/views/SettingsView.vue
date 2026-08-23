@@ -6,10 +6,40 @@ import { authService } from '@/services/auth'
 import { permissionService } from '@/services/permission'
 import { inviteService } from '@/services/invite'
 import type { Invite } from '@/services/invite'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { useToast } from '@/composables/useToast'
+import { useConfirm } from '@/composables/useConfirm'
 import { getAvatarUrl } from '@/utils'
 import type { UserStatus, UserRole } from '@/types'
+import {
+  DialogRoot,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  SwitchRoot,
+  SwitchThumb,
+  SelectRoot,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectItemText,
+} from 'reka-ui'
+import {
+  PhArrowLeft,
+  PhCamera,
+  PhFloppyDisk,
+  PhKey,
+  PhPalette,
+  PhUserPlus,
+  PhTrash,
+  PhCopy,
+  PhCheck,
+  PhX,
+  PhShield,
+} from '@phosphor-icons/vue'
 
+const toast = useToast()
+const { confirm } = useConfirm()
 const authStore = useAuthStore()
 const presenceStore = usePresenceStore()
 
@@ -76,9 +106,9 @@ async function createInvite() {
     const invite = await inviteService.createInvite(inviteMaxUses.value, inviteDuration.value)
     generatedInviteLink.value = getInviteLink(invite.code)
     await loadInvites()
-    ElMessage.success('Convite criado com sucesso')
+    toast.success('Convite criado com sucesso')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao criar convite')
+    toast.error(e.response?.data?.message || 'Erro ao criar convite')
   } finally {
     inviteLoading.value = false
   }
@@ -86,10 +116,10 @@ async function createInvite() {
 
 async function deleteInvite(id: string) {
   try {
-    await ElMessageBox.confirm('Excluir este convite?', 'Confirmar', { type: 'warning' })
+    await confirm({ title: 'Confirmar', message: 'Excluir este convite?', type: 'warning' })
     await inviteService.deleteInvite(id)
     await loadInvites()
-    ElMessage.success('Convite excluido')
+    toast.success('Convite excluido')
   } catch {
     // cancelled
   }
@@ -97,7 +127,7 @@ async function deleteInvite(id: string) {
 
 function copyInviteLink(link: string) {
   navigator.clipboard.writeText(link)
-  ElMessage.success('Link copiado para a area de transferencia')
+  toast.success('Link copiado para a area de transferencia')
 }
 
 function isInviteExpired(expiresAt: string): boolean {
@@ -106,26 +136,26 @@ function isInviteExpired(expiresAt: string): boolean {
 
 async function savePassword() {
   if (!currentPassword.value || !newPassword.value) {
-    ElMessage.warning('Preencha a senha atual e a nova senha')
+    toast.warning('Preencha a senha atual e a nova senha')
     return
   }
   if (newPassword.value !== confirmPassword.value) {
-    ElMessage.warning('A confirmação não confere com a nova senha')
+    toast.warning('A confirmação não confere com a nova senha')
     return
   }
   if (newPassword.value.length < 6) {
-    ElMessage.warning('A nova senha deve ter pelo menos 6 caracteres')
+    toast.warning('A nova senha deve ter pelo menos 6 caracteres')
     return
   }
   passwordLoading.value = true
   try {
     await authService.changePassword(currentPassword.value, newPassword.value)
-    ElMessage.success('Senha alterada com sucesso')
+    toast.success('Senha alterada com sucesso')
     currentPassword.value = ''
     newPassword.value = ''
     confirmPassword.value = ''
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao alterar senha')
+    toast.error(e.response?.data?.message || 'Erro ao alterar senha')
   } finally {
     passwordLoading.value = false
   }
@@ -139,9 +169,9 @@ async function saveProfile() {
       bio: bio.value,
     })
     await authStore.fetchCurrentUser()
-    ElMessage.success('Perfil atualizado com sucesso')
+    toast.success('Perfil atualizado com sucesso')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao atualizar perfil')
+    toast.error(e.response?.data?.message || 'Erro ao atualizar perfil')
   } finally {
     loading.value = false
   }
@@ -151,9 +181,9 @@ async function changeStatus(status: UserStatus) {
   statusLoading.value = true
   try {
     await authStore.updateStatus(status)
-    ElMessage.success('Status atualizado')
+    toast.success('Status atualizado')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao atualizar status')
+    toast.error(e.response?.data?.message || 'Erro ao atualizar status')
   } finally {
     statusLoading.value = false
   }
@@ -172,9 +202,9 @@ async function handleAvatarChange(event: Event) {
   try {
     await authService.uploadAvatar(file)
     await authStore.fetchCurrentUser()
-    ElMessage.success('Avatar atualizado com sucesso')
+    toast.success('Avatar atualizado com sucesso')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao enviar avatar')
+    toast.error(e.response?.data?.message || 'Erro ao enviar avatar')
   } finally {
     avatarUploading.value = false
     if (avatarInput.value) {
@@ -190,9 +220,9 @@ async function changeUserRole(userId: string, role: UserRole) {
     if (user && updated.role) {
       user.role = updated.role
     }
-    ElMessage.success('Role atualizada')
+    toast.success('Role atualizada')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao alterar role')
+    toast.error(e.response?.data?.message || 'Erro ao alterar role')
   }
 }
 </script>
@@ -202,216 +232,249 @@ async function changeUserRole(userId: string, role: UserRole) {
     <div class="settings-container">
       <h1 class="settings-title">Configurações</h1>
 
-      <el-card class="settings-card">
-        <template #header>
-          <span class="card-header">Perfil</span>
-        </template>
+      <!-- Profile Card -->
+      <div class="card settings-card">
+        <div class="card-header">
+          <span class="card-header-title">Perfil</span>
+        </div>
+        <div class="card-body">
+          <div class="avatar-section">
+            <div class="avatar-wrapper">
+              <div class="avatar avatar-2xl">
+                <img :src="getAvatarUrl(authStore.user?.avatarUrl, authStore.user?.username || '')" alt="Avatar" />
+              </div>
+              <button
+                type="button"
+                class="avatar-edit-btn"
+                :disabled="avatarUploading"
+                title="Alterar avatar"
+                @click="triggerAvatarUpload"
+              >
+                <PhCamera v-if="!avatarUploading" :size="14" />
+                <span v-else class="spinner"></span>
+              </button>
+            </div>
+            <input
+              ref="avatarInput"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              style="display: none"
+              @change="handleAvatarChange"
+            />
+            <div class="avatar-info">
+              <p class="avatar-username">{{ authStore.user?.username }}</p>
+              <p class="avatar-id">ID: {{ authStore.user?.id }}</p>
+            </div>
+          </div>
 
-        <div class="avatar-section">
-          <div class="avatar-wrapper">
-            <el-avatar :size="80" :src="getAvatarUrl(authStore.user?.avatarUrl, authStore.user?.username || '')" />
-            <button
-              type="button"
-              class="avatar-edit-btn"
-              :disabled="avatarUploading"
-              title="Alterar avatar"
-              @click="triggerAvatarUpload"
-            >
-              <el-icon v-if="!avatarUploading"><Camera /></el-icon>
-              <el-icon v-else class="is-loading"><Loading /></el-icon>
+          <form @submit.prevent="saveProfile">
+            <div class="form-group">
+              <label class="form-label">Alterar senha</label>
+              <div class="password-grid">
+                <input v-model="currentPassword" type="password" class="input" placeholder="Senha atual" />
+                <input v-model="newPassword" type="password" class="input" placeholder="Nova senha (mín. 6)" />
+                <input v-model="confirmPassword" type="password" class="input" placeholder="Confirmar nova senha" />
+                <button type="button" class="btn btn-primary" :disabled="passwordLoading" @click="savePassword">
+                  <PhKey v-if="!passwordLoading" :size="16" />
+                  <span v-else class="spinner"></span>
+                  Alterar senha
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <SelectRoot
+                :model-value="authStore.user?.status || 'ONLINE'"
+                @update:model-value="(val: any) => changeStatus(val as UserStatus)"
+              >
+                <SelectTrigger class="select-trigger">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem
+                    v-for="option in STATUS_OPTIONS"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    <SelectItemText>{{ option.label }}</SelectItemText>
+                  </SelectItem>
+                </SelectContent>
+              </SelectRoot>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Nome de Exibição</label>
+              <input v-model="displayName" type="text" class="input" placeholder="Seu nome" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Bio</label>
+              <textarea v-model="bio" class="textarea" rows="3" placeholder="Conte sobre você..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" :disabled="loading">
+              <PhFloppyDisk v-if="!loading" :size="16" />
+              <span v-else class="spinner"></span>
+              Salvar Alterações
             </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Audio & Video Card -->
+      <div class="card settings-card">
+        <div class="card-header">
+          <span class="card-header-title">Áudio e Vídeo</span>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Microfone Padrão</label>
+            <select class="select-trigger">
+              <option value="default">Padrão do sistema</option>
+            </select>
           </div>
-          <input
-            ref="avatarInput"
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            style="display: none"
-            @change="handleAvatarChange"
-          />
-          <div class="avatar-info">
-            <p class="avatar-username">{{ authStore.user?.username }}</p>
-            <p class="avatar-id">ID: {{ authStore.user?.id }}</p>
+
+          <div class="form-group">
+            <label class="form-label">Alto-falante Padrão</label>
+            <select class="select-trigger">
+              <option value="default">Padrão do sistema</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Câmera Padrão</label>
+            <select class="select-trigger">
+              <option value="none">Nenhuma</option>
+            </select>
           </div>
         </div>
+      </div>
 
-        <el-form @submit.prevent="saveProfile" label-position="top">
-          <el-form-item label="Alterar senha">
-            <div class="password-grid">
-              <el-input v-model="currentPassword" type="password" show-password placeholder="Senha atual" />
-              <el-input v-model="newPassword" type="password" show-password placeholder="Nova senha (mín. 6)" />
-              <el-input v-model="confirmPassword" type="password" show-password placeholder="Confirmar nova senha" />
-              <el-button type="primary" :loading="passwordLoading" @click="savePassword">
-                Alterar senha
-              </el-button>
+      <!-- Appearance Card -->
+      <div class="card settings-card">
+        <div class="card-header">
+          <span class="card-header-title">Aparência</span>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Tema</label>
+            <div class="switch-row">
+              <SwitchRoot :model-value="true" class="switch-root">
+                <SwitchThumb class="switch-thumb" />
+              </SwitchRoot>
+              <span class="switch-label">Escuro</span>
             </div>
-          </el-form-item>
+          </div>
+        </div>
+      </div>
 
-          <el-form-item label="Status">
-            <el-select
-              :model-value="authStore.user?.status || 'ONLINE'"
-              class="w-full"
-              :loading="statusLoading"
-              @change="changeStatus"
+      <!-- Manage Users Card (Admin only) -->
+      <div v-if="isAdmin" class="card settings-card">
+        <div class="card-header">
+          <span class="card-header-title">Gerenciar Usuários</span>
+        </div>
+        <div class="card-body">
+          <div class="users-manage-list">
+            <div
+              v-for="user in presenceStore.users"
+              :key="user.id"
+              class="user-manage-row"
             >
-              <el-option
-                v-for="option in STATUS_OPTIONS"
-                :key="option.value"
-                :label="option.label"
-                :value="option.value"
-              />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="Nome de Exibição">
-            <el-input v-model="displayName" placeholder="Seu nome" />
-          </el-form-item>
-
-          <el-form-item label="Bio">
-            <el-input
-              v-model="bio"
-              type="textarea"
-              :rows="3"
-              placeholder="Conte sobre você..."
-            />
-          </el-form-item>
-
-          <el-button type="primary" :loading="loading" @click="saveProfile">
-            Salvar Alterações
-          </el-button>
-        </el-form>
-      </el-card>
-
-      <el-card class="settings-card">
-        <template #header>
-          <span class="card-header">Áudio e Vídeo</span>
-        </template>
-
-        <el-form label-position="top">
-          <el-form-item label="Microfone Padrão">
-            <el-select placeholder="Selecionar microfone" class="w-full">
-              <el-option label="Padrão do sistema" value="default" />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="Alto-falante Padrão">
-            <el-select placeholder="Selecionar alto-falante" class="w-full">
-              <el-option label="Padrão do sistema" value="default" />
-            </el-select>
-          </el-form-item>
-
-          <el-form-item label="Câmera Padrão">
-            <el-select placeholder="Selecionar câmera" class="w-full">
-              <el-option label="Nenhuma" value="none" />
-            </el-select>
-          </el-form-item>
-        </el-form>
-      </el-card>
-
-      <el-card class="settings-card">
-        <template #header>
-          <span class="card-header">Aparência</span>
-        </template>
-
-        <el-form label-position="top">
-          <el-form-item label="Tema">
-            <el-switch
-              active-text="Escuro"
-              inactive-text="Claro"
-              model-value
-            />
-          </el-form-item>
-        </el-form>
-      </el-card>
-
-      <el-card v-if="isAdmin" class="settings-card">
-        <template #header>
-          <span class="card-header">Gerenciar Usuários</span>
-        </template>
-
-        <div class="users-manage-list">
-          <div
-            v-for="user in presenceStore.users"
-            :key="user.id"
-            class="user-manage-row"
-          >
-            <el-avatar :size="32" :src="getAvatarUrl(user.avatarUrl, user.username)" />
-            <div class="user-manage-info">
-              <span class="user-manage-name">{{ user.displayName }}</span>
-              <span class="user-manage-username">@{{ user.username }}</span>
+              <div class="avatar">
+                <img :src="getAvatarUrl(user.avatarUrl, user.username)" :alt="user.displayName" />
+              </div>
+              <div class="user-manage-info">
+                <span class="user-manage-name">{{ user.displayName }}</span>
+                <span class="user-manage-username">@{{ user.username }}</span>
+              </div>
+              <SelectRoot
+                :model-value="user.role || 'USER'"
+                :disabled="user.id === authStore.user?.id"
+                @update:model-value="(val: any) => changeUserRole(user.id, val as UserRole)"
+              >
+                <SelectTrigger class="select-trigger role-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem
+                    v-for="option in ROLE_OPTIONS"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    <SelectItemText>{{ option.label }}</SelectItemText>
+                  </SelectItem>
+                </SelectContent>
+              </SelectRoot>
             </div>
-            <el-select
-              :model-value="user.role || 'USER'"
-              size="small"
-              class="role-select"
-              :disabled="user.id === authStore.user?.id"
-              @change="(role: any) => changeUserRole(user.id, role as UserRole)"
+          </div>
+        </div>
+      </div>
+
+      <!-- Manage Invites Card (Admin only) -->
+      <div v-if="isAdmin" class="card settings-card">
+        <div class="card-header">
+          <span class="card-header-title">Gerenciar Convites</span>
+        </div>
+        <div class="card-body">
+          <div class="invite-create">
+            <div class="invite-form">
+              <div class="invite-fields">
+                <div class="form-group">
+                  <label class="form-label">Maximo de usos</label>
+                  <input v-model.number="inviteMaxUses" type="number" class="input-number" min="1" max="100" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Duracao (minutos)</label>
+                  <input v-model.number="inviteDuration" type="number" class="input-number" min="1" max="1440" step="5" />
+                </div>
+              </div>
+              <button class="btn btn-primary" :disabled="inviteLoading" @click="createInvite">
+                <PhUserPlus v-if="!inviteLoading" :size="16" />
+                <span v-else class="spinner"></span>
+                Gerar Link de Convite
+              </button>
+            </div>
+
+            <div v-if="generatedInviteLink" class="generated-link">
+              <div class="input-group">
+                <input :value="generatedInviteLink" readonly class="input" />
+                <button class="btn btn-default" @click="copyInviteLink(generatedInviteLink)">
+                  <PhCopy :size="16" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="invites.length" class="invites-list">
+            <div
+              v-for="invite in invites"
+              :key="invite.id"
+              class="invite-row"
+              :class="{ expired: isInviteExpired(invite.expiresAt) || invite.useCount >= invite.maxUses }"
             >
-              <el-option
-                v-for="option in ROLE_OPTIONS"
-                :key="option.value"
-                :label="option.label"
-                :value="option.value"
-              />
-            </el-select>
-          </div>
-        </div>
-      </el-card>
-
-      <el-card v-if="isAdmin" class="settings-card">
-        <template #header>
-          <span class="card-header">Gerenciar Convites</span>
-        </template>
-
-        <div class="invite-create">
-          <el-form label-position="top" class="invite-form">
-            <div class="invite-fields">
-              <el-form-item label="Maximo de usos">
-                <el-input-number v-model="inviteMaxUses" :min="1" :max="100" />
-              </el-form-item>
-              <el-form-item label="Duracao (minutos)">
-                <el-input-number v-model="inviteDuration" :min="1" :max="1440" :step="5" />
-              </el-form-item>
-            </div>
-            <el-button type="primary" :loading="inviteLoading" @click="createInvite">
-              Gerar Link de Convite
-            </el-button>
-          </el-form>
-
-          <div v-if="generatedInviteLink" class="generated-link">
-            <el-input :model-value="generatedInviteLink" readonly>
-              <template #append>
-                <el-button @click="copyInviteLink(generatedInviteLink)">Copiar</el-button>
-              </template>
-            </el-input>
-          </div>
-        </div>
-
-        <div v-if="invites.length" class="invites-list">
-          <div
-            v-for="invite in invites"
-            :key="invite.id"
-            class="invite-row"
-            :class="{ expired: isInviteExpired(invite.expiresAt) || invite.useCount >= invite.maxUses }"
-          >
-            <div class="invite-info-col">
-              <span class="invite-code">{{ invite.code }}</span>
-              <span class="invite-meta">
-                {{ invite.useCount }}/{{ invite.maxUses }} usos
-                &middot;
-                expira em {{ new Date(invite.expiresAt).toLocaleString('pt-BR') }}
-              </span>
-            </div>
-            <div class="invite-actions">
-              <el-button size="small" @click="copyInviteLink(getInviteLink(invite.code))">
-                Copiar Link
-              </el-button>
-              <el-button size="small" type="danger" @click="deleteInvite(invite.id)">
-                Excluir
-              </el-button>
+              <div class="invite-info-col">
+                <span class="invite-code">{{ invite.code }}</span>
+                <span class="invite-meta">
+                  {{ invite.useCount }}/{{ invite.maxUses }} usos
+                  &middot;
+                  expira em {{ new Date(invite.expiresAt).toLocaleString('pt-BR') }}
+                </span>
+              </div>
+              <div class="invite-actions">
+                <button class="btn btn-ghost" @click="copyInviteLink(getInviteLink(invite.code))">
+                  <PhCopy :size="14" />
+                  Copiar Link
+                </button>
+                <button class="btn btn-danger" @click="deleteInvite(invite.id)">
+                  <PhTrash :size="14" />
+                  Excluir
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </el-card>
+      </div>
     </div>
   </div>
 </template>
@@ -442,16 +505,6 @@ async function changeUserRole(userId: string, role: UserRole) {
 
 .settings-card {
   margin-bottom: var(--space-lg);
-  background-color: var(--absono-surface-1) !important;
-  border: 1px solid var(--absono-border) !important;
-  border-radius: var(--radius-xl) !important;
-}
-
-.card-header {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--absono-text);
 }
 
 .avatar-section {
@@ -493,10 +546,6 @@ async function changeUserRole(userId: string, role: UserRole) {
   &:disabled {
     opacity: 0.7;
     cursor: wait;
-  }
-
-  .el-icon {
-    font-size: 14px;
   }
 }
 
@@ -564,6 +613,17 @@ async function changeUserRole(userId: string, role: UserRole) {
   width: 100%;
 }
 
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.switch-label {
+  font-size: 14px;
+  color: var(--absono-text);
+}
+
 .invite-create {
   margin-bottom: var(--space-lg);
 }
@@ -577,6 +637,15 @@ async function changeUserRole(userId: string, role: UserRole) {
 .invite-fields {
   display: flex;
   gap: var(--space-lg);
+}
+
+.input-group {
+  display: flex;
+  gap: var(--space-xs);
+
+  .input {
+    flex: 1;
+  }
 }
 
 .generated-link {
@@ -626,5 +695,19 @@ async function changeUserRole(userId: string, role: UserRole) {
   display: flex;
   gap: var(--space-xs);
   flex-shrink: 0;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

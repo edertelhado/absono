@@ -3,11 +3,13 @@ import { computed } from 'vue'
 import { useChannelStore } from '@/stores/useChannelStore'
 import { useVoiceStore } from '@/stores/useVoiceStore'
 import { useVoiceStateStore } from '@/stores/useVoiceStateStore'
-import { ElMessage } from 'element-plus'
+import { useToast } from '@/composables/useToast'
+import { PhMonitor, PhMicrophone, PhMicrophoneSlash, PhHeadphones, PhSpeakerSlash, PhPhoneDisconnect } from '@phosphor-icons/vue'
 
 const channelStore = useChannelStore()
 const voiceStore = useVoiceStore()
 const voiceStateStore = useVoiceStateStore()
+const toast = useToast()
 
 const channel = computed(() =>
   channelStore.channels.find(c => c.id === voiceStore.joinedChannelId)
@@ -28,7 +30,7 @@ async function toggleMicrophone() {
   try {
     await voiceStore.toggleMicrophone()
   } catch {
-    ElMessage.error('Não foi possível acessar o microfone')
+    toast.error('Não foi possível acessar o microfone')
   }
 }
 
@@ -41,7 +43,7 @@ async function toggleScreenShare() {
     }
   } catch (e: any) {
     if (e?.name !== 'NotAllowedError') {
-      ElMessage.error('Erro ao compartilhar a tela')
+      toast.error('Erro ao compartilhar a tela')
     }
   }
 }
@@ -57,7 +59,7 @@ async function toggleScreenShare() {
       <span class="vsb-name">{{ channel?.name || 'Canal de voz' }}</span>
       <span class="vsb-count">{{ participantCount }}</span>
       <span v-if="voiceStore.isScreenSharing" class="vsb-sharing">
-        <el-icon><Monitor /></el-icon>
+        <PhMonitor :size="14" />
         transmitindo
         <span v-if="watcherCount > 0" class="vsb-watchers">
           · {{ watcherCount }} assistindo
@@ -66,39 +68,38 @@ async function toggleScreenShare() {
     </span>
 
     <span class="vsb-controls">
-      <el-button
-        :type="voiceStore.isMicrophoneEnabled ? 'primary' : 'danger'"
-        circle
-        size="small"
+      <button
+        class="btn-icon"
+        :class="voiceStore.isMicrophoneEnabled ? 'btn-primary' : 'btn-danger'"
         @click="toggleMicrophone"
         :title="voiceStore.isMicrophoneEnabled ? 'Desligar microfone' : 'Ligar microfone'"
       >
-        <el-icon><Microphone v-if="voiceStore.isMicrophoneEnabled" /><Mute v-else /></el-icon>
-      </el-button>
+        <PhMicrophone v-if="voiceStore.isMicrophoneEnabled" :size="16" />
+        <PhMicrophoneSlash v-else :size="16" />
+      </button>
 
-      <el-button
-        :type="voiceStore.deafened ? 'danger' : 'default'"
-        circle
-        size="small"
+      <button
+        class="btn-icon"
+        :class="voiceStore.deafened ? 'btn-danger' : 'btn-default'"
         @click="voiceStore.toggleDeafen()"
         :title="voiceStore.deafened ? 'Desabafar' : 'Abafar'"
       >
-        <el-icon><Headset v-if="!voiceStore.deafened" /><Mute v-else /></el-icon>
-      </el-button>
+        <PhHeadphones v-if="!voiceStore.deafened" :size="16" />
+        <PhSpeakerSlash v-else :size="16" />
+      </button>
 
-      <el-button
-        :type="voiceStore.isScreenSharing ? 'success' : 'default'"
-        circle
-        size="small"
+      <button
+        class="btn-icon"
+        :class="voiceStore.isScreenSharing ? 'btn-success' : 'btn-default'"
         @click="toggleScreenShare"
         title="Compartilhar tela"
       >
-        <el-icon><Monitor /></el-icon>
-      </el-button>
+        <PhMonitor :size="16" />
+      </button>
 
-      <el-button type="danger" circle size="small" @click="voiceStore.disconnect()" title="Desconectar">
-        <el-icon><SwitchButton /></el-icon>
-      </el-button>
+      <button class="btn-icon btn-danger" @click="voiceStore.disconnect()" title="Desconectar">
+        <PhPhoneDisconnect :size="16" />
+      </button>
     </span>
   </div>
 </template>
@@ -160,7 +161,7 @@ async function toggleScreenShare() {
   font-weight: 600;
   color: #7ee787;
 
-  .el-icon {
+  svg {
     animation: pulse-share 1.6s infinite ease-in-out;
   }
 }

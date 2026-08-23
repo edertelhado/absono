@@ -1,0 +1,128 @@
+/* ── Toast (Reka UI Toast wrapper) ── */
+.toast-viewport {
+  position: fixed;
+  bottom: var(--space-lg);
+  right: var(--space-lg);
+  display: flex;
+  flex-direction: column-reverse;
+  gap: var(--space-sm);
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  z-index: 200;
+  list-style: none;
+  outline: none;
+}
+
+.toast-root {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background-color: var(--absono-surface-2);
+  border: 1px solid var(--absono-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-toast);
+  animation: toast-in 0.2s ease;
+
+  &[data-state='closed'] {
+    animation: toast-out 0.15s ease;
+  }
+
+  &[data-swipe='move'] {
+    transform: translateX(var(--reka-toast-swipe-move-x));
+  }
+
+  &[data-swipe='cancel'] {
+    transform: translateX(0);
+    transition: transform 0.2s ease;
+  }
+
+  &[data-swipe='end'] {
+    animation: toast-swipe-out 0.15s ease;
+  }
+}
+
+.toast-root[data-type='success'] {
+  border-left: 3px solid var(--absono-success);
+}
+
+.toast-root[data-type='error'] {
+  border-left: 3px solid var(--absono-danger);
+}
+
+.toast-root[data-type='warning'] {
+  border-left: 3px solid var(--absono-away);
+}
+
+.toast-root[data-type='info'] {
+  border-left: 3px solid var(--absono-primary);
+}
+
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--absono-text);
+}
+
+.toast-description {
+  font-size: 12px;
+  color: var(--absono-text-secondary);
+  margin-top: 2px;
+}
+
+.toast-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--absono-text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--absono-text);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+
+@keyframes toast-swipe-out {
+  from {
+    opacity: 1;
+    transform: translateX(var(--reka-toast-swipe-end-x));
+  }
+  to {
+    opacity: 0;
+    transform: translateX(calc(100% + var(--space-lg)));
+  }
+}

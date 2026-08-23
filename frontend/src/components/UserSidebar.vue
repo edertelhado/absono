@@ -5,29 +5,35 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { usePresenceStore } from '@/stores/usePresenceStore'
 import { useVoiceStore } from '@/stores/useVoiceStore'
 import { permissionService } from '@/services/permission'
-import { ElMessage } from 'element-plus'
+import { useToast } from '@/composables/useToast'
 import { getAvatarUrl } from '@/utils'
 import { useRouter } from 'vue-router'
 import { channelService } from '@/services/channel'
 import { useChannelStore } from '@/stores/useChannelStore'
+import {
+  DropdownMenuRoot,
+  DropdownMenuTrigger,
+  DropdownMenuPortal,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from 'reka-ui'
+import { PhChatCircle, PhDotsThree } from '@phosphor-icons/vue'
 
 const authStore = useAuthStore()
 const presenceStore = usePresenceStore()
 const voiceStore = useVoiceStore()
 const router = useRouter()
 const channelStore = useChannelStore()
+const toast = useToast()
 
 async function openDm(userId: string) {
   try {
     const { channelId } = await channelService.openDmWith(userId)
     await channelStore.fetchChannels()
-    const ch = channelStore.channels.find(c => c.id === channelId)
-    console.log('[DM DEBUG] channelId=', channelId, '| na lista=', !!ch,
-      '| tipo=', (ch as any)?.type, '| total=', channelStore.channels.length)
     router.push(`/channel/${channelId}`)
   } catch (e: any) {
     console.error('[DM DEBUG] falhou:', e?.message)
-    ElMessage.error(e.response?.data?.message || 'Erro ao abrir mensagem direta')
+    toast.error(e.response?.data?.message || 'Erro ao abrir mensagem direta')
   }
 }
 
@@ -54,7 +60,6 @@ const offlineUsers = computed<User[]>(() =>
   presenceStore.users.filter(u => effectiveStatus(u) === 'OFFLINE')
 )
 
-// prioriza o mapa de presença ao vivo (WS); cai para o status persistido só como fallback
 function effectiveStatus(user: User): UserStatus {
   const live = presenceStore.getStatus(user.id)
   if (live && live !== 'OFFLINE') return live
@@ -77,25 +82,15 @@ async function changeRole(user: User, role: UserRole) {
   try {
     const updated = await permissionService.updateUserRole(user.id, role)
     user.role = updated.role
-    ElMessage.success(`Role de ${user.displayName} alterada para ${role}`)
+    toast.success(`Role de ${user.displayName} alterada para ${role}`)
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao alterar role')
+    toast.error(e.response?.data?.message || 'Erro ao alterar role')
   }
 }
 
 const speakingIds = computed<Set<string>>(() => voiceStore.activeSpeakers)
 
 const me = computed(() => authStore.user)
-
-async function setStatus(status: UserStatus) {
-  if (!me.value || status === (me.value.status ?? 'ONLINE')) return
-  try {
-    await authStore.updateStatus(status)
-    ElMessage.success(`Status: ${STATUS_LABELS[status]}`)
-  } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao mudar status')
-  }
-}
 
 function myStatusLabel(): string {
   return me.value ? STATUS_LABELS[me.value.status ?? 'ONLINE'] ?? 'Online' : ''
@@ -118,8 +113,17 @@ function myStatusLabel(): string {
           :class="{ speaking: speakingIds.has(user.id) }"
         >
           <div class="user-avatar-wrapper">
-            <el-avatar :size="32" :src="getAvatarUrl(user.avatarUrl, user.username)" />
-            <span class="status-dot" :class="statusClass(user)"></span>
+            <div class="avatar avatar-md">
+              <img
+                v-if="user.avatarUrl"
+                :src="getAvatarUrl(user.avatarUrl, user.username)"
+                :alt="user.displayName"
+              />
+              <div v-else class="avatar-fallback">
+                {{ user.displayName?.charAt(0)?.toUpperCase() || '?' }}
+              </div>
+            </div>
+            <span class="avatar-status" :class="statusClass(user)"></span>
           </div>
           <div class="user-info">
             <span class="user-name">
@@ -136,25 +140,41 @@ function myStatusLabel(): string {
             :title="`Mensagem direta para ${user.displayName}`"
             @click.stop="openDm(user.id)"
           >
-            <el-icon><ChatDotRound /></el-icon>
+            <PhChatCircle :size="16" />
           </button>
 
-          <el-dropdown
-            v-if="isAdmin && user.id !== authStore.user?.id"
-            trigger="click"
-            @command="(cmd: any) => changeRole(user, cmd as UserRole)"
-          >
-            <el-button text circle size="small" class="role-btn">
-              <el-icon><MoreFilled /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="USER" :disabled="user.role === 'USER'">Usuário</el-dropdown-item>
-                <el-dropdown-item command="MODERATOR" :disabled="user.role === 'MODERATOR'">Moderador</el-dropdown-item>
-                <el-dropdown-item command="ADMIN" :disabled="user.role === 'ADMIN'">Admin</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <DropdownMenuRoot v-if="isAdmin && user.id !== authStore.user?.id">
+            <DropdownMenuTrigger as-child>
+              <button class="role-btn btn-icon">
+                <PhDotsThree :size="16" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuContent class="dropdown-content" :side-offset="4" align="end">
+                <DropdownMenuItem
+                  class="dropdown-item"
+                  :disabled="user.role === 'USER'"
+                  @select="changeRole(user, 'USER')"
+                >
+                  Usuário
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  class="dropdown-item"
+                  :disabled="user.role === 'MODERATOR'"
+                  @select="changeRole(user, 'MODERATOR')"
+                >
+                  Moderador
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  class="dropdown-item"
+                  :disabled="user.role === 'ADMIN'"
+                  @select="changeRole(user, 'ADMIN')"
+                >
+                  Admin
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenuPortal>
+          </DropdownMenuRoot>
         </div>
       </template>
 
@@ -166,8 +186,17 @@ function myStatusLabel(): string {
           class="user-item offline"
         >
           <div class="user-avatar-wrapper">
-            <el-avatar :size="32" :src="getAvatarUrl(user.avatarUrl, user.username)" />
-            <span class="status-dot" :class="statusClass(user)"></span>
+            <div class="avatar avatar-md">
+              <img
+                v-if="user.avatarUrl"
+                :src="getAvatarUrl(user.avatarUrl, user.username)"
+                :alt="user.displayName"
+              />
+              <div v-else class="avatar-fallback">
+                {{ user.displayName?.charAt(0)?.toUpperCase() || '?' }}
+              </div>
+            </div>
+            <span class="avatar-status" :class="statusClass(user)"></span>
           </div>
           <div class="user-info">
             <span class="user-name">
@@ -188,7 +217,7 @@ function myStatusLabel(): string {
 
     <div class="sidebar-footer" v-if="me">
       <div class="me-chip">
-        <span class="status-dot" :class="statusClass(me)"></span>
+        <span class="avatar-status" :class="statusClass(me)"></span>
         <span class="me-name">{{ me.displayName }}</span>
         <span class="me-status">{{ myStatusLabel() }}</span>
       </div>
@@ -269,33 +298,6 @@ function myStatusLabel(): string {
 .user-avatar-wrapper {
   position: relative;
   flex-shrink: 0;
-}
-
-.status-dot {
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 2px solid var(--absono-surface-1);
-
-  &.status-online {
-    background-color: var(--absono-online);
-  }
-
-  &.status-away {
-    background-color: var(--absono-away);
-  }
-
-  &.status-do_not_disturb {
-    background-color: var(--absono-dnd);
-  }
-
-  &.status-invisible,
-  &.status-offline {
-    background-color: var(--absono-offline);
-  }
 }
 
 .user-info {
@@ -424,10 +426,5 @@ function myStatusLabel(): string {
   font-size: 12px;
   color: var(--absono-text-muted);
   margin-left: auto;
-}
-
-.me-caret {
-  font-size: 12px;
-  color: var(--absono-text-muted);
 }
 </style>

@@ -3,8 +3,13 @@ import { ref, watch, computed } from 'vue'
 import type { ChannelPermission, User } from '@/types'
 import { usePermissionStore } from '@/stores/usePermissionStore'
 import { usePresenceStore } from '@/stores/usePresenceStore'
-import { authService } from '@/services/auth'
-import { ElMessage } from 'element-plus'
+import { useToast } from '@/composables/useToast'
+import {
+  DialogRoot, DialogPortal, DialogOverlay, DialogContent,
+  DialogTitle, DialogClose,
+  SwitchRoot, SwitchThumb,
+} from 'reka-ui'
+import { PhPencilSimple, PhTrash } from '@phosphor-icons/vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -18,6 +23,7 @@ const emit = defineEmits<{
 
 const permissionStore = usePermissionStore()
 const presenceStore = usePresenceStore()
+const toast = useToast()
 
 const visible = computed({
   get: () => props.modelValue,
@@ -49,7 +55,7 @@ async function loadPermissions() {
   try {
     permissions.value = await permissionStore.fetchPermissions(props.channelId)
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao carregar permissões')
+    toast.error(e.response?.data?.message || 'Erro ao carregar permissões')
     visible.value = false
   } finally {
     loading.value = false
@@ -90,9 +96,9 @@ async function savePermission() {
     })
     await loadPermissions()
     addDialogVisible.value = false
-    ElMessage.success('Permissão salva')
+    toast.success('Permissão salva')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao salvar permissão')
+    toast.error(e.response?.data?.message || 'Erro ao salvar permissão')
   } finally {
     saving.value = false
   }
@@ -102,107 +108,146 @@ async function removePermission(permission: ChannelPermission) {
   try {
     await permissionStore.deletePermission(props.channelId, permission.userId)
     await loadPermissions()
-    ElMessage.success('Permissão removida')
+    toast.success('Permissão removida')
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || 'Erro ao remover permissão')
+    toast.error(e.response?.data?.message || 'Erro ao remover permissão')
   }
 }
 </script>
 
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="`Permissões — #${channelName}`"
-    width="560px"
-    class="permissions-dialog"
-  >
-    <div v-loading="loading" class="dialog-body">
-      <div class="permissions-header">
-        <span class="hint">
-          Canais com permissões explícitas ficam restritos aos usuários listados.
-        </span>
-        <el-button type="primary" size="small" @click="openAddDialog" :disabled="availableUsers.length === 0">
-          Adicionar usuário
-        </el-button>
-      </div>
+  <DialogRoot :open="visible" @update:open="(v: boolean) => visible = v">
+    <DialogPortal>
+      <DialogOverlay class="dialog-overlay" />
+      <DialogContent class="dialog-content permissions-dialog">
+        <DialogTitle class="dialog-title">Permissões — #{{ channelName }}</DialogTitle>
 
-      <div v-if="permissions.length === 0 && !loading" class="empty-state">
-        Nenhuma permissão explícita. O canal está aberto a todos os usuários.
-      </div>
+        <div class="dialog-body">
+          <div v-if="loading" class="loading-state">Carregando...</div>
 
-      <div v-else class="permission-list">
-        <div v-for="perm in permissions" :key="perm.id" class="permission-item">
-          <div class="perm-user">
-            <span class="perm-name">{{ userName(perm.userId) }}</span>
-          </div>
-          <div class="perm-flags">
-            <el-tag :type="perm.canRead ? 'success' : 'info'" size="small">Ler</el-tag>
-            <el-tag :type="perm.canWrite ? 'success' : 'info'" size="small">Escrever</el-tag>
-            <el-tag :type="perm.canManage ? 'warning' : 'info'" size="small">Gerenciar</el-tag>
-          </div>
-          <div class="perm-actions">
-            <el-button text circle size="small" @click="openEditDialog(perm)">
-              <el-icon><Edit /></el-icon>
-            </el-button>
-            <el-button text circle size="small" type="danger" @click="removePermission(perm)">
-              <el-icon><Delete /></el-icon>
-            </el-button>
+          <template v-else>
+            <div class="permissions-header">
+              <span class="hint">
+                Canais com permissões explícitas ficam restritos aos usuários listados.
+              </span>
+              <button class="btn btn-primary btn-sm" @click="openAddDialog" :disabled="availableUsers.length === 0">
+                Adicionar usuário
+              </button>
+            </div>
+
+            <div v-if="permissions.length === 0" class="empty-state">
+              Nenhuma permissão explícita. O canal está aberto a todos os usuários.
+            </div>
+
+            <div v-else class="permission-list">
+              <div v-for="perm in permissions" :key="perm.id" class="permission-item">
+                <div class="perm-user">
+                  <span class="perm-name">{{ userName(perm.userId) }}</span>
+                </div>
+                <div class="perm-flags">
+                  <span class="badge" :class="perm.canRead ? 'badge-success' : 'badge-muted'">Ler</span>
+                  <span class="badge" :class="perm.canWrite ? 'badge-success' : 'badge-muted'">Escrever</span>
+                  <span class="badge" :class="perm.canManage ? 'badge-success' : 'badge-muted'">Gerenciar</span>
+                </div>
+                <div class="perm-actions">
+                  <button class="btn-icon" @click="openEditDialog(perm)" title="Editar">
+                    <PhPencilSimple :size="16" />
+                  </button>
+                  <button class="btn-icon" @click="removePermission(perm)" title="Remover">
+                    <PhTrash :size="16" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div class="dialog-footer">
+          <DialogClose class="btn btn-default" as-child>
+            <button>Fechar</button>
+          </DialogClose>
+        </div>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
+
+  <DialogRoot :open="addDialogVisible" @update:open="(v: boolean) => addDialogVisible = v">
+    <DialogPortal>
+      <DialogOverlay class="dialog-overlay" />
+      <DialogContent class="dialog-content" style="max-width: 420px;">
+        <DialogTitle class="dialog-title">
+          {{ editingUserId ? 'Editar permissão' : 'Adicionar permissão' }}
+        </DialogTitle>
+
+        <div class="form-group">
+          <label class="form-label">Usuário</label>
+          <div class="select-trigger">
+            <select v-model="selectedUserId" :disabled="!!editingUserId" class="w-full">
+              <option value="" disabled>Selecionar usuário</option>
+              <option
+                v-for="user in (editingUserId ? presenceStore.users : availableUsers)"
+                :key="user.id"
+                :value="user.id"
+              >
+                {{ user.displayName }}
+              </option>
+            </select>
           </div>
         </div>
-      </div>
-    </div>
 
-    <el-dialog
-      v-model="addDialogVisible"
-      :title="editingUserId ? 'Editar permissão' : 'Adicionar permissão'"
-      width="420px"
-      append-to-body
-    >
-      <el-form label-position="top">
-        <el-form-item label="Usuário">
-          <el-select
-            v-model="selectedUserId"
-            placeholder="Selecionar usuário"
-            class="w-full"
-            :disabled="!!editingUserId"
-            filterable
-          >
-            <el-option
-              v-for="user in (editingUserId ? presenceStore.users : availableUsers)"
-              :key="user.id"
-              :label="user.displayName"
-              :value="user.id"
-            />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="Permissões">
+        <div class="form-group" style="margin-top: var(--space-md);">
+          <label class="form-label">Permissões</label>
           <div class="checkbox-group">
-            <el-checkbox v-model="newPerm.canRead">Ler mensagens</el-checkbox>
-            <el-checkbox v-model="newPerm.canWrite">Enviar mensagens</el-checkbox>
-            <el-checkbox v-model="newPerm.canManage">Gerenciar canal</el-checkbox>
+            <label class="switch">
+              <SwitchRoot :checked="newPerm.canRead" @update:checked="(v: boolean) => newPerm.canRead = v" class="switch-root">
+                <SwitchThumb class="switch-thumb" />
+              </SwitchRoot>
+              <span>Ler mensagens</span>
+            </label>
+            <label class="switch">
+              <SwitchRoot :checked="newPerm.canWrite" @update:checked="(v: boolean) => newPerm.canWrite = v" class="switch-root">
+                <SwitchThumb class="switch-thumb" />
+              </SwitchRoot>
+              <span>Enviar mensagens</span>
+            </label>
+            <label class="switch">
+              <SwitchRoot :checked="newPerm.canManage" @update:checked="(v: boolean) => newPerm.canManage = v" class="switch-root">
+                <SwitchThumb class="switch-thumb" />
+              </SwitchRoot>
+              <span>Gerenciar canal</span>
+            </label>
           </div>
-        </el-form-item>
-      </el-form>
+        </div>
 
-      <template #footer>
-        <el-button @click="addDialogVisible = false">Cancelar</el-button>
-        <el-button
-          type="primary"
-          :loading="saving"
-          :disabled="!selectedUserId"
-          @click="savePermission"
-        >
-          Salvar
-        </el-button>
-      </template>
-    </el-dialog>
-  </el-dialog>
+        <div class="dialog-footer">
+          <DialogClose class="btn btn-default" as-child>
+            <button>Cancelar</button>
+          </DialogClose>
+          <button
+            class="btn btn-primary"
+            :disabled="!selectedUserId || saving"
+            @click="savePermission"
+          >
+            {{ saving ? 'Salvando...' : 'Salvar' }}
+          </button>
+        </div>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 </template>
 
 <style scoped lang="scss">
 .dialog-body {
   min-height: 120px;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: var(--absono-text-muted);
+  font-size: 13px;
 }
 
 .permissions-header {

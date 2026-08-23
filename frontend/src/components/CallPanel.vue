@@ -4,10 +4,21 @@ import type { RemoteParticipant, RemoteVideoTrack, LocalVideoTrack } from 'livek
 import { VideoQuality } from 'livekit-client'
 import { useChannelStore } from '@/stores/useChannelStore'
 import { useVoiceStore } from '@/stores/useVoiceStore'
-import { ElMessage } from 'element-plus'
+import { useToast } from '@/composables/useToast'
 import { RESOLUTION_OPTIONS, FPS_OPTIONS } from '@/utils/livekit-presets'
 import type { ScreenResolution, ScreenFPS } from '@/utils/livekit-presets'
+import {
+  DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription,
+  PopoverRoot, PopoverTrigger, PopoverPortal, PopoverContent,
+} from 'reka-ui'
+import {
+  PhMicrophone, PhMicrophoneSlash, PhVideoCamera, PhVideoCameraSlash,
+  PhMonitor, PhPhoneDisconnect, PhSpeakerHigh, PhSpeakerSlash,
+  PhSpinner, PhStar, PhArrowsOutSimple,
+  PhCopy, PhEye, PhGear, PhArrowClockwise, PhUser, PhX,
+} from '@phosphor-icons/vue'
 
+const toast = useToast()
 const channelStore = useChannelStore()
 const voiceStore = useVoiceStore()
 
@@ -105,7 +116,7 @@ const watcherNames = computed<string[]>(() => {
 watch(watcherNames, (now, prev) => {
   const added = now.filter(n => !(prev ?? []).includes(n))
   if (added.length > 0 && voiceStore.isScreenSharing) {
-    ElMessage.info(`${added.join(', ')} começou a assistir sua tela`)
+    toast.info(`${added.join(', ')} começou a assistir sua tela`)
   }
 })
 
@@ -190,7 +201,7 @@ async function togglePip() {
       await el.requestPictureInPicture()
     }
   } catch {
-    ElMessage.warning('Picture-in-Picture não disponível para este vídeo')
+    toast.warning('Picture-in-Picture não disponível para este vídeo')
   }
 }
 
@@ -212,7 +223,7 @@ async function joinCall() {
     await voiceStore.connect(channel.value.id)
   } catch (e: any) {
     console.error('Erro ao conectar à chamada:', e)
-    ElMessage.error(e?.message ? `Erro ao conectar à chamada: ${e.message}` : 'Erro ao conectar à chamada')
+    toast.error(e?.message ? `Erro ao conectar à chamada: ${e.message}` : 'Erro ao conectar à chamada')
   }
 }
 
@@ -226,7 +237,7 @@ async function toggleMicrophone() {
     await voiceStore.toggleMicrophone()
   } catch (e: any) {
     console.error('Erro ao alternar microfone:', e)
-    ElMessage.error('Não foi possível acessar o microfone — verifique as permissões do navegador')
+    toast.error('Não foi possível acessar o microfone — verifique as permissões do navegador')
   }
 }
 
@@ -235,7 +246,7 @@ async function toggleCamera() {
     await voiceStore.toggleCamera()
   } catch (e: any) {
     console.error('Erro ao alternar câmera:', e)
-    ElMessage.error('Não foi possível acessar a câmera — verifique as permissões do navegador')
+    toast.error('Não foi possível acessar a câmera — verifique as permissões do navegador')
   }
 }
 
@@ -265,7 +276,7 @@ async function confirmScreenShare() {
   } catch (e: any) {
     console.error('Erro no compartilhamento de tela:', e)
     if (e?.name !== 'NotAllowedError') {
-      ElMessage.error('Erro ao compartilhar a tela')
+      toast.error('Erro ao compartilhar a tela')
     }
   }
 }
@@ -275,7 +286,7 @@ async function switchScreen() {
     await voiceStore.switchScreenShare()
   } catch (e: any) {
     if (e?.name !== 'NotAllowedError') {
-      ElMessage.error('Erro ao trocar tela')
+      toast.error('Erro ao trocar tela')
     }
   }
 }
@@ -301,7 +312,7 @@ async function toggleFullscreen() {
       await el.requestFullscreen()
     }
   } catch {
-    ElMessage.warning('Tela cheia não disponível para este elemento')
+    toast.warning('Tela cheia não disponível para este elemento')
   }
 }
 </script>
@@ -318,28 +329,28 @@ async function toggleFullscreen() {
         <div class="lobby-icon">{{ channel?.type === 'VOICE' ? '🔊' : '📹' }}</div>
         <h3>{{ channel?.name }}</h3>
         <p class="lobby-description">{{ channel?.description || 'Entrar na chamada' }}</p>
-        <el-button type="primary" size="large" @click="joinCall">
+        <button class="btn btn-primary btn-lg" @click="joinCall">
           Entrar na Chamada
-        </el-button>
+        </button>
       </div>
 
       <div v-else-if="connecting" class="call-connecting">
-        <el-icon class="is-loading" :size="48"><Loading /></el-icon>
+        <PhSpinner :size="48" class="spin" />
         <p>Conectando...</p>
       </div>
 
       <div v-else class="call-active">
         <div v-if="voiceStore.reconnecting" class="reconnect-overlay">
-          <el-icon class="is-loading" :size="28"><Loading /></el-icon>
+          <PhSpinner :size="28" class="spin" />
           <span>Reconectando à chamada...</span>
         </div>
 
         <div v-if="pinnedTile || screenShare" ref="spotlightAreaRef" class="spotlight-area">
           <template v-if="pinnedTile">
             <span class="share-badge pinned-badge">
-              <el-icon><Star /></el-icon>
+              <PhStar :size="14" />
               {{ pinnedTile.name }} (fixado)
-              <el-button text size="small" class="unpin-btn" @click="pinnedIdentity = null">Remover</el-button>
+              <button class="btn btn-ghost btn-sm unpin-btn" @click="pinnedIdentity = null">Remover</button>
             </span>
             <video
               v-if="pinnedTile.cameraTrack"
@@ -350,12 +361,14 @@ async function toggleFullscreen() {
               class="spotlight-video"
             ></video>
             <div v-else class="spotlight-avatar">
-              <el-avatar :size="96" />
+              <div class="avatar-placeholder avatar-lg">
+                <PhUser :size="48" />
+              </div>
             </div>
           </template>
           <template v-else-if="screenShare">
             <span class="share-badge" :class="{ own: screenShare.isOwn }">
-              <el-icon><Monitor /></el-icon>
+              <PhMonitor :size="14" />
               {{ screenShare.name }}
             </span>
             <video
@@ -365,27 +378,27 @@ async function toggleFullscreen() {
               class="spotlight-video"
             ></video>
             <div class="spotlight-actions">
-              <el-select
+              <select
                 v-if="!screenShare.isOwn"
-                v-model="remoteQuality"
-                size="small"
-                class="quality-select"
-                @change="(q: any) => applyRemoteQuality(q as VideoQuality | 'auto')"
+                :value="remoteQuality"
+                class="select-trigger quality-select"
+                @change="(e: Event) => { const q = (e.target as HTMLSelectElement).value as VideoQuality | 'auto'; remoteQuality = q; applyRemoteQuality(q) }"
               >
-                <el-option value="auto" label="Qualidade: Auto" />
-                <el-option :value="VideoQuality.HIGH" label="Qualidade: Alta" />
-                <el-option :value="VideoQuality.MEDIUM" label="Qualidade: Média" />
-                <el-option :value="VideoQuality.LOW" label="Qualidade: Baixa" />
-              </el-select>
-              <el-button v-if="pipSupported" size="small" circle @click="togglePip" title="Picture-in-Picture">
-                <el-icon><CopyDocument /></el-icon>
-              </el-button>
-              <el-button size="small" circle @click="toggleFullscreen" :title="isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'">
-                <el-icon><FullScreen v-if="!isFullscreen" /><CloseBold v-else /></el-icon>
-              </el-button>
+                <option value="auto">Qualidade: Auto</option>
+                <option :value="VideoQuality.HIGH">Qualidade: Alta</option>
+                <option :value="VideoQuality.MEDIUM">Qualidade: Média</option>
+                <option :value="VideoQuality.LOW">Qualidade: Baixa</option>
+              </select>
+              <button v-if="pipSupported" class="btn btn-icon btn-sm" @click="togglePip" title="Picture-in-Picture">
+                <PhCopy :size="16" />
+              </button>
+              <button class="btn btn-icon btn-sm" @click="toggleFullscreen" :title="isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'">
+                <PhArrowsOutSimple v-if="!isFullscreen" :size="16" />
+                <PhX v-else :size="16" />
+              </button>
             </div>
             <div v-if="screenShare.isOwn && watcherNames.length" class="watchers-badge">
-              <el-icon><View /></el-icon>
+              <PhEye :size="14" />
               <span class="watchers-count">{{ watcherNames.length }} assistindo</span>
               <span class="watcher-names">{{ watcherNames.join(', ') }}</span>
             </div>
@@ -409,11 +422,13 @@ async function toggleFullscreen() {
               class="tile-video"
             ></video>
             <div v-else class="avatar-wrap">
-              <el-avatar :size="64" />
+              <div class="avatar-placeholder">
+                <PhUser :size="32" />
+              </div>
             </div>
             <span class="participant-name">{{ tile.name }}</span>
-            <el-popover v-if="!tile.isLocal" placement="top" :width="190" trigger="click">
-              <template #reference>
+            <PopoverRoot v-if="!tile.isLocal">
+              <PopoverTrigger as-child>
                 <button
                   class="volume-btn"
                   :class="{ muted: effectiveVolume(tile.key) === 0 }"
@@ -422,170 +437,208 @@ async function toggleFullscreen() {
                 >
                   {{ effectiveVolume(tile.key) }}%
                 </button>
-              </template>
-              <div class="volume-slider">
-                <span class="volume-label">Volume — {{ tile.name }}</span>
-                <el-slider
-                  :model-value="volumeFor(tile.key)"
-                  @input="(v: number) => setVolume(tile.key, v)"
-                  :min="0"
-                  :max="100"
-                  size="small"
-                />
-              </div>
-            </el-popover>
+              </PopoverTrigger>
+              <PopoverPortal>
+                <PopoverContent side="top" :side-offset="8" class="popover-content">
+                  <div class="volume-slider">
+                    <span class="volume-label">Volume — {{ tile.name }}</span>
+                    <input
+                      type="range"
+                      :value="volumeFor(tile.key)"
+                      @input="(e: Event) => setVolume(tile.key, Number((e.target as HTMLInputElement).value))"
+                      :min="0"
+                      :max="100"
+                      class="range-slider"
+                    />
+                  </div>
+                </PopoverContent>
+              </PopoverPortal>
+            </PopoverRoot>
             <span v-if="tile.micMuted" class="mic-indicator">
-              <el-icon><Mute /></el-icon>
+              <PhMicrophoneSlash :size="14" />
             </span>
           </div>
         </div>
 
         <div class="call-controls">
-          <el-button
-            :type="voiceStore.isMicrophoneEnabled ? 'primary' : 'danger'"
-            circle
-            size="large"
+          <button
+            class="btn btn-lg"
+            :class="voiceStore.isMicrophoneEnabled ? 'btn-primary' : 'btn-danger'"
             title="Microfone"
             @click="toggleMicrophone"
           >
-            <el-icon><Microphone v-if="voiceStore.isMicrophoneEnabled" /><Mute v-else /></el-icon>
-          </el-button>
+            <PhMicrophone v-if="voiceStore.isMicrophoneEnabled" :size="20" />
+            <PhMicrophoneSlash v-else :size="20" />
+          </button>
 
-          <el-button
-            :type="deafened ? 'danger' : 'default'"
-            circle
-            size="large"
+          <button
+            class="btn btn-lg"
+            :class="deafened ? 'btn-danger' : 'btn-default'"
             @click="toggleDeafen"
             :title="deafened ? 'Desabafar' : 'Abafar (silenciar todos)'"
-          >            <el-icon><Headset v-if="!deafened" /><Mute v-else /></el-icon>
-          </el-button>
+          >
+            <PhSpeakerHigh v-if="!deafened" :size="20" />
+            <PhSpeakerSlash v-else :size="20" />
+          </button>
 
-          <el-button
-            :type="voiceStore.isCameraEnabled ? 'primary' : 'danger'"
-            circle
-            size="large"
+          <button
+            class="btn btn-lg"
+            :class="voiceStore.isCameraEnabled ? 'btn-primary' : 'btn-danger'"
             title="Câmera"
             @click="toggleCamera"
           >
-            <el-icon><VideoCamera v-if="voiceStore.isCameraEnabled" /><VideoPause v-else /></el-icon>
-          </el-button>
+            <PhVideoCamera v-if="voiceStore.isCameraEnabled" :size="20" />
+            <PhVideoCameraSlash v-else :size="20" />
+          </button>
 
-          <el-button
-            :type="voiceStore.isScreenSharing ? 'success' : 'default'"
-            circle
-            size="large"
+          <button
+            class="btn btn-lg"
+            :class="voiceStore.isScreenSharing ? 'btn-primary' : 'btn-default'"
             title="Compartilhar tela"
             @click="toggleScreenShare"
           >
-            <el-icon><Monitor /></el-icon>
-          </el-button>
+            <PhMonitor :size="20" />
+          </button>
 
-          <el-button
+          <button
             v-if="voiceStore.isScreenSharing"
-            circle
-            size="large"
+            class="btn btn-lg btn-default"
             title="Trocar tela/janela"
             @click="switchScreen"
           >
-            <el-icon><Refresh /></el-icon>
-          </el-button>
+            <PhArrowClockwise :size="20" />
+          </button>
 
-          <el-button type="danger" circle size="large" title="Desconectar" @click="leaveCall">
-            <el-icon><Phone /></el-icon>
-          </el-button>
+          <button class="btn btn-lg btn-danger" title="Desconectar" @click="leaveCall">
+            <PhPhoneDisconnect :size="20" />
+          </button>
 
-          <el-button circle size="large" title="Configurações de chamada" @click="showSettings = true">
-            <el-icon><Setting /></el-icon>
-          </el-button>
+          <button class="btn btn-lg btn-default" title="Configurações de chamada" @click="showSettings = true">
+            <PhGear :size="20" />
+          </button>
         </div>
       </div>
     </div>
   </div>
 
-  <el-dialog v-model="showSettings" title="Configurações de Chamada" width="500px">
-    <el-form label-position="top">
-      <el-form-item label="Microfone">
-        <el-select v-model="voiceStore.selectedAudioInput" class="w-full">
-          <el-option
-            v-for="device in voiceStore.audioDevices.filter(d => d.kind === 'audioinput')"
-            :key="device.deviceId"
-            :label="device.label"
-            :value="device.deviceId"
-          />
-        </el-select>
-      </el-form-item>
+  <DialogRoot v-model:open="showSettings">
+    <DialogPortal>
+      <DialogOverlay class="dialog-overlay" />
+      <DialogContent class="dialog-content">
+        <DialogTitle class="dialog-title">Configurações de Chamada</DialogTitle>
+        <div class="form-group">
+          <label class="form-label">Microfone</label>
+          <div class="select-trigger w-full">
+            <select v-model="voiceStore.selectedAudioInput">
+              <option
+                v-for="device in voiceStore.audioDevices.filter(d => d.kind === 'audioinput')"
+                :key="device.deviceId"
+                :value="device.deviceId"
+              >{{ device.label }}</option>
+            </select>
+          </div>
+        </div>
 
-      <el-form-item label="Alto-falante">
-        <el-select v-model="voiceStore.selectedAudioOutput" class="w-full">
-          <el-option
-            v-for="device in voiceStore.audioDevices.filter(d => d.kind === 'audiooutput')"
-            :key="device.deviceId"
-            :label="device.label"
-            :value="device.deviceId"
-          />
-        </el-select>
-      </el-form-item>
+        <div class="form-group" style="margin-top: var(--space-md);">
+          <label class="form-label">Alto-falante</label>
+          <div class="select-trigger w-full">
+            <select v-model="voiceStore.selectedAudioOutput">
+              <option
+                v-for="device in voiceStore.audioDevices.filter(d => d.kind === 'audiooutput')"
+                :key="device.deviceId"
+                :value="device.deviceId"
+              >{{ device.label }}</option>
+            </select>
+          </div>
+        </div>
 
-      <el-form-item label="Câmera">
-        <el-select v-model="voiceStore.selectedVideoInput" class="w-full">
-          <el-option
-            v-for="device in voiceStore.videoDevices"
-            :key="device.deviceId"
-            :label="device.label"
-            :value="device.deviceId"
-          />
-        </el-select>
-      </el-form-item>
+        <div class="form-group" style="margin-top: var(--space-md);">
+          <label class="form-label">Câmera</label>
+          <div class="select-trigger w-full">
+            <select v-model="voiceStore.selectedVideoInput">
+              <option
+                v-for="device in voiceStore.videoDevices"
+                :key="device.deviceId"
+                :value="device.deviceId"
+              >{{ device.label }}</option>
+            </select>
+          </div>
+        </div>
 
-      <el-form-item label="Áudio">
-        <el-switch
-          v-model="voiceStore.noiseSuppression"
-          active-text="Supressão de ruído (IA)"
-          @change="(val: any) => voiceStore.setNoiseSuppression(Boolean(val))"
-        />
-        <div class="setting-hint">Reduz ruído do ambiente no seu microfone (Krisp). Suporte no Chrome/Edge.</div>
-      </el-form-item>
-    </el-form>
-  </el-dialog>
+        <div class="form-group" style="margin-top: var(--space-md);">
+          <label class="form-label">Áudio</label>
+          <label class="toggle-row">
+            <input
+              type="checkbox"
+              class="toggle-input"
+              :checked="voiceStore.noiseSuppression"
+              @change="(e: Event) => voiceStore.setNoiseSuppression((e.target as HTMLInputElement).checked)"
+            />
+            <span class="toggle-switch"></span>
+            <span class="toggle-label">Supressão de ruído (IA)</span>
+          </label>
+          <div class="setting-hint">Reduz ruído do ambiente no seu microfone (Krisp). Suporte no Chrome/Edge.</div>
+        </div>
 
-  <el-dialog v-model="showShareDialog" title="Compartilhar Tela" width="400px" :close-on-click-modal="false">
-    <el-form label-position="top">
-      <el-form-item label="Resolução">
-        <el-select v-model="shareResolution" class="w-full">
-          <el-option
-            v-for="opt in RESOLUTION_OPTIONS"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
-      </el-form-item>
+        <div class="dialog-footer">
+          <button class="btn btn-default" @click="showSettings = false">Fechar</button>
+        </div>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 
-      <el-form-item label="FPS">
-        <el-select v-model="shareFps" class="w-full">
-          <el-option
-            v-for="opt in FPS_OPTIONS"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
-      </el-form-item>
+  <DialogRoot v-model:open="showShareDialog">
+    <DialogPortal>
+      <DialogOverlay class="dialog-overlay" />
+      <DialogContent class="dialog-content">
+        <DialogTitle class="dialog-title">Compartilhar Tela</DialogTitle>
+        <div class="form-group">
+          <label class="form-label">Resolução</label>
+          <div class="select-trigger w-full">
+            <select v-model="shareResolution">
+              <option
+                v-for="opt in RESOLUTION_OPTIONS"
+                :key="opt.value"
+                :value="opt.value"
+              >{{ opt.label }}</option>
+            </select>
+          </div>
+        </div>
 
-      <el-form-item label="Áudio do Desktop">
-        <el-switch
-          v-model="shareIncludeAudio"
-          active-text="Compartilhar áudio do sistema"
-        />
-        <div class="setting-hint">Captura o áudio reproduzido no seu computador (Chrome/Edge). Marque "Compartilhar áudio" no diálogo do navegador.</div>
-      </el-form-item>
-    </el-form>
+        <div class="form-group" style="margin-top: var(--space-md);">
+          <label class="form-label">FPS</label>
+          <div class="select-trigger w-full">
+            <select v-model="shareFps">
+              <option
+                v-for="opt in FPS_OPTIONS"
+                :key="opt.value"
+                :value="opt.value"
+              >{{ opt.label }}</option>
+            </select>
+          </div>
+        </div>
 
-    <template #footer>
-      <el-button @click="showShareDialog = false">Cancelar</el-button>
-      <el-button type="primary" @click="confirmScreenShare">Iniciar</el-button>
-    </template>
-  </el-dialog>
+        <div class="form-group" style="margin-top: var(--space-md);">
+          <label class="form-label">Áudio do Desktop</label>
+          <label class="toggle-row">
+            <input
+              type="checkbox"
+              class="toggle-input"
+              v-model="shareIncludeAudio"
+            />
+            <span class="toggle-switch"></span>
+            <span class="toggle-label">Compartilhar áudio do sistema</span>
+          </label>
+          <div class="setting-hint">Captura o áudio reproduzido no seu computador (Chrome/Edge). Marque "Compartilhar áudio" no diálogo do navegador.</div>
+        </div>
+
+        <div class="dialog-footer">
+          <button class="btn btn-default" @click="showShareDialog = false">Cancelar</button>
+          <button class="btn btn-primary" @click="confirmScreenShare">Iniciar</button>
+        </div>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 </template>
 
 <style scoped lang="scss">
@@ -766,6 +819,16 @@ async function toggleFullscreen() {
   gap: var(--space-xs);
 }
 
+.quality-select {
+  width: 160px;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+
+  select {
+    color: #fff;
+  }
+}
+
 .watchers-badge {
   position: absolute;
   bottom: var(--space-sm);
@@ -791,15 +854,6 @@ async function toggleFullscreen() {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-}
-
-.quality-select {
-  width: 160px;
-
-  :deep(.el-input__wrapper) {
-    background: rgba(0, 0, 0, 0.6);
-    box-shadow: none;
   }
 }
 
@@ -857,6 +911,22 @@ async function toggleFullscreen() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--absono-surface-3);
+  color: var(--absono-text-muted);
+
+  &.avatar-lg {
+    width: 96px;
+    height: 96px;
+  }
 }
 
 .participant-name {
@@ -926,6 +996,34 @@ async function toggleFullscreen() {
   }
 }
 
+.range-slider {
+  width: 100%;
+  height: 4px;
+  appearance: none;
+  background: var(--absono-surface-3);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--absono-primary);
+    cursor: pointer;
+  }
+
+  &::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--absono-primary);
+    border: none;
+    cursor: pointer;
+  }
+}
+
 .call-controls {
   display: flex;
   align-items: center;
@@ -945,5 +1043,71 @@ async function toggleFullscreen() {
   color: var(--absono-text-muted);
   margin-top: var(--space-xs);
   line-height: 1.4;
+}
+
+.popover-content {
+  background: var(--absono-surface-1);
+  border: 1px solid var(--absono-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  box-shadow: var(--shadow-modal);
+  z-index: 100;
+  min-width: 190px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-input {
+  display: none;
+
+  &:checked + .toggle-switch {
+    background-color: var(--absono-primary);
+
+    &::after {
+      transform: translateX(16px);
+    }
+  }
+}
+
+.toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background-color: var(--absono-surface-3);
+  border-radius: 10px;
+  transition: background-color 0.2s ease;
+  flex-shrink: 0;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+  }
+}
+
+.toggle-label {
+  font-size: 13px;
+  color: var(--absono-text);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

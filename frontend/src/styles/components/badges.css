@@ -1,0 +1,27 @@
+/* ── Badge ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #fff;
+  background-color: var(--absono-primary);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.badge-danger {
+  background-color: var(--absono-danger);
+}
+
+.badge-success {
+  background-color: var(--absono-success);
+}
+
+.badge-muted {
+  background-color: var(--absono-surface-3);
+  color: var(--absono-text-muted);
+}
