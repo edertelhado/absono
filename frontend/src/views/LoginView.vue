@@ -73,8 +73,7 @@ async function handleLogin() {
         </el-form>
 
         <div class="login-footer">
-          <span class="login-footer-text">Não tem conta?</span>
-          <router-link to="/register" class="login-link">Criar conta</router-link>
+          <span class="login-footer-text">Precisa de acesso? Solicite um convite ao administrador.</span>
         </div>
       </div>
     </div>

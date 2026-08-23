@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="br.com.absono.invite.InviteMapper">
+
+    <resultMap id="InviteResultMap" type="br.com.absono.invite.Invite">
+        <id property="id" column="id"/>
+        <result property="code" column="code"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="maxUses" column="max_uses"/>
+        <result property="useCount" column="use_count"/>
+        <result property="expiresAt" column="expires_at"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="findByCode" resultMap="InviteResultMap">
+        SELECT id, code, created_by, max_uses, use_count, expires_at, created_at
+        FROM invites WHERE code = #{code}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO invites (id, code, created_by, max_uses, expires_at)
+        VALUES (#{id}, #{code}, #{createdBy}, #{maxUses}, #{expiresAt}::timestamp)
+    </insert>
+
+    <update id="incrementUseCount">
+        UPDATE invites SET use_count = use_count + 1 WHERE code = #{code}
+    </update>
+
+    <select id="findByCreatedBy" resultMap="InviteResultMap">
+        SELECT id, code, created_by, max_uses, use_count, expires_at, created_at
+        FROM invites WHERE created_by = #{createdBy} ORDER BY created_at DESC
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM invites WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteExpired">
+        DELETE FROM invites WHERE expires_at &lt; NOW()
+    </delete>
+
+</mapper>

@@ -1,5 +1,6 @@
 package br.com.absono.auth
 
+import br.com.absono.invite.InviteService
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
@@ -12,14 +13,18 @@ import org.springframework.web.bind.annotation.*
 class AuthController {
 
     private final AuthService authService
+    private final InviteService inviteService
 
-    AuthController(AuthService authService) {
+    AuthController(AuthService authService, InviteService inviteService) {
         this.authService = authService
+        this.inviteService = inviteService
     }
 
     @PostMapping('/register')
     ResponseEntity<?> register(@RequestBody @Valid RegisterRequest request) {
+        inviteService.validateInvite(request.inviteCode)
         def response = authService.register(request)
+        inviteService.consumeInvite(request.inviteCode)
         ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 
@@ -58,6 +63,9 @@ class RegisterRequest {
     @NotBlank(message = 'Senha é obrigatória')
     @Size(min = 6, max = 128, message = 'Senha deve ter entre 6 e 128 caracteres')
     String password
+
+    @NotBlank(message = 'Código de convite é obrigatório')
+    String inviteCode
 }
 
 class LoginRequest {

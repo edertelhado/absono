@@ -24,10 +24,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(username: string, displayName: string, password: string) {
+  async function register(username: string, displayName: string, password: string, inviteCode: string) {
     loading.value = true
     try {
-      const response = await authService.register(username, displayName, password)
+      const response = await authService.register(username, displayName, password, inviteCode)
       token.value = response.accessToken
       user.value = response.user
       localStorage.setItem('absono_token', response.accessToken)

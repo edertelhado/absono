@@ -425,23 +425,50 @@ export const useVoiceStore = defineStore('voice', () => {
     if (!localParticipant.value) return
     const params = getScreenShareEncodingParams(screenShareResolution.value, screenShareFPS.value)
     try {
-      const publication = await localParticipant.value.setScreenShareEnabled(
-        true,
-        {
-          resolution: { width: params.width, height: params.height, frameRate: params.maxFramerate },
-          audio: true,
-          systemAudio: 'include',
-          selfBrowserSurface: 'exclude',
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: params.width },
+          height: { ideal: params.height },
+          frameRate: { ideal: params.maxFramerate },
         },
-        {
-          videoEncoding: { maxBitrate: params.maxBitrate, maxFramerate: params.maxFramerate },
-          simulcast: true,
-          degradationPreference: 'maintain-resolution',
-        }
-      )
-      localScreenShareTrack.value = publication?.videoTrack ?? null
+        audio: {
+          channelCount: 2,
+          sampleRate: 48000,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      })
+
+      const videoTrack = stream.getVideoTracks()[0]
+      const audioTrack = stream.getAudioTracks()[0]
+
+      if (!videoTrack) {
+        throw new Error('Nenhuma trilha de video capturada')
+      }
+
+      const videoPub = await localParticipant.value.publishTrack(videoTrack, {
+        source: Track.Source.ScreenShare,
+        videoEncoding: { maxBitrate: params.maxBitrate, maxFramerate: params.maxFramerate },
+        simulcast: true,
+        degradationPreference: 'maintain-resolution',
+      })
+
+      if (audioTrack) {
+        await localParticipant.value.publishTrack(audioTrack, {
+          source: Track.Source.ScreenShareAudio,
+        })
+      }
+
+      localScreenShareTrack.value = videoPub?.videoTrack as LocalVideoTrack ?? null
       isScreenSharing.value = true
       screenWatchers.value = []
+
+      videoTrack.onended = () => {
+        if (isScreenSharing.value) {
+          stopScreenShare()
+        }
+      }
     } catch (e) {
       isScreenSharing.value = false
       throw e

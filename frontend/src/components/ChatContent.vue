@@ -526,16 +526,18 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div class="message-actions" v-if="canModifyMessage(message)">
+          <div class="message-actions">
             <el-button size="small" text circle :title="message.threadCount ? 'Abrir thread' : 'Responder em thread'" @click.stop="openThreadFor(message)">
               <el-icon><ChatLineRound /></el-icon>
             </el-button>
-            <el-button size="small" text circle title="Editar mensagem" @click="startEdit(message)">
-              <el-icon><Edit /></el-icon>
-            </el-button>
-            <el-button size="small" text circle title="Excluir mensagem" @click="deleteMessage(message)">
-              <el-icon><Delete /></el-icon>
-            </el-button>
+            <template v-if="canModifyMessage(message)">
+              <el-button size="small" text circle title="Editar mensagem" @click="startEdit(message)">
+                <el-icon><Edit /></el-icon>
+              </el-button>
+              <el-button size="small" text circle title="Excluir mensagem" @click="deleteMessage(message)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </template>
           </div>
         </div>
       </div>

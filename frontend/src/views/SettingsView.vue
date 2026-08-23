@@ -4,7 +4,9 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { usePresenceStore } from '@/stores/usePresenceStore'
 import { authService } from '@/services/auth'
 import { permissionService } from '@/services/permission'
-import { ElMessage } from 'element-plus'
+import { inviteService } from '@/services/invite'
+import type { Invite } from '@/services/invite'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAvatarUrl } from '@/utils'
 import type { UserStatus, UserRole } from '@/types'
 
@@ -38,6 +40,12 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 
 const isAdmin = computed(() => authStore.user?.role === 'ADMIN')
 
+const invites = ref<Invite[]>([])
+const inviteMaxUses = ref(1)
+const inviteDuration = ref(15)
+const inviteLoading = ref(false)
+const generatedInviteLink = ref('')
+
 onMounted(async () => {
   if (authStore.user) {
     displayName.value = authStore.user.displayName || ''
@@ -45,8 +53,56 @@ onMounted(async () => {
   }
   if (isAdmin.value) {
     await presenceStore.fetchUsers()
+    await loadInvites()
   }
 })
+
+async function loadInvites() {
+  try {
+    invites.value = await inviteService.listInvites()
+  } catch {
+    // ignore
+  }
+}
+
+function getInviteLink(code: string): string {
+  const base = window.location.origin
+  return `${base}/register?invite=${code}`
+}
+
+async function createInvite() {
+  inviteLoading.value = true
+  try {
+    const invite = await inviteService.createInvite(inviteMaxUses.value, inviteDuration.value)
+    generatedInviteLink.value = getInviteLink(invite.code)
+    await loadInvites()
+    ElMessage.success('Convite criado com sucesso')
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || 'Erro ao criar convite')
+  } finally {
+    inviteLoading.value = false
+  }
+}
+
+async function deleteInvite(id: string) {
+  try {
+    await ElMessageBox.confirm('Excluir este convite?', 'Confirmar', { type: 'warning' })
+    await inviteService.deleteInvite(id)
+    await loadInvites()
+    ElMessage.success('Convite excluido')
+  } catch {
+    // cancelled
+  }
+}
+
+function copyInviteLink(link: string) {
+  navigator.clipboard.writeText(link)
+  ElMessage.success('Link copiado para a area de transferencia')
+}
+
+function isInviteExpired(expiresAt: string): boolean {
+  return new Date(expiresAt) < new Date()
+}
 
 async function savePassword() {
   if (!currentPassword.value || !newPassword.value) {
@@ -300,6 +356,62 @@ async function changeUserRole(userId: string, role: UserRole) {
           </div>
         </div>
       </el-card>
+
+      <el-card v-if="isAdmin" class="settings-card">
+        <template #header>
+          <span class="card-header">Gerenciar Convites</span>
+        </template>
+
+        <div class="invite-create">
+          <el-form label-position="top" class="invite-form">
+            <div class="invite-fields">
+              <el-form-item label="Maximo de usos">
+                <el-input-number v-model="inviteMaxUses" :min="1" :max="100" />
+              </el-form-item>
+              <el-form-item label="Duracao (minutos)">
+                <el-input-number v-model="inviteDuration" :min="1" :max="1440" :step="5" />
+              </el-form-item>
+            </div>
+            <el-button type="primary" :loading="inviteLoading" @click="createInvite">
+              Gerar Link de Convite
+            </el-button>
+          </el-form>
+
+          <div v-if="generatedInviteLink" class="generated-link">
+            <el-input :model-value="generatedInviteLink" readonly>
+              <template #append>
+                <el-button @click="copyInviteLink(generatedInviteLink)">Copiar</el-button>
+              </template>
+            </el-input>
+          </div>
+        </div>
+
+        <div v-if="invites.length" class="invites-list">
+          <div
+            v-for="invite in invites"
+            :key="invite.id"
+            class="invite-row"
+            :class="{ expired: isInviteExpired(invite.expiresAt) || invite.useCount >= invite.maxUses }"
+          >
+            <div class="invite-info-col">
+              <span class="invite-code">{{ invite.code }}</span>
+              <span class="invite-meta">
+                {{ invite.useCount }}/{{ invite.maxUses }} usos
+                &middot;
+                expira em {{ new Date(invite.expiresAt).toLocaleString('pt-BR') }}
+              </span>
+            </div>
+            <div class="invite-actions">
+              <el-button size="small" @click="copyInviteLink(getInviteLink(invite.code))">
+                Copiar Link
+              </el-button>
+              <el-button size="small" type="danger" @click="deleteInvite(invite.id)">
+                Excluir
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </el-card>
     </div>
   </div>
 </template>
@@ -450,5 +562,69 @@ async function changeUserRole(userId: string, role: UserRole) {
   flex-direction: column;
   gap: var(--space-sm);
   width: 100%;
+}
+
+.invite-create {
+  margin-bottom: var(--space-lg);
+}
+
+.invite-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.invite-fields {
+  display: flex;
+  gap: var(--space-lg);
+}
+
+.generated-link {
+  margin-top: var(--space-md);
+}
+
+.invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.invite-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--absono-surface-2);
+  border-radius: var(--radius-md);
+
+  &.expired {
+    opacity: 0.5;
+  }
+}
+
+.invite-info-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.invite-code {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--absono-text);
+}
+
+.invite-meta {
+  font-size: 12px;
+  color: var(--absono-text-muted);
+  margin-top: 2px;
+}
+
+.invite-actions {
+  display: flex;
+  gap: var(--space-xs);
+  flex-shrink: 0;
 }
 </style>
