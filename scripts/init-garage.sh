@@ -24,6 +24,19 @@ G() {
 echo "==> Status do cluster Garage"
 G status || true
 
+echo "==> Configurando layout do cluster (single node, idempotente)"
+NODE_ID=$(G status | grep -oE '\b[0-9a-f]{16}\b' | head -1)
+if [ -z "$NODE_ID" ]; then
+  echo "ERRO: Node ID não encontrado no 'garage status'" >&2
+  exit 1
+fi
+if G layout assign -z dc1 -c 1G "$NODE_ID" 2>/dev/null; then
+  G layout apply --version 1
+  echo "Layout aplicado (v1) para o node $NODE_ID."
+else
+  echo "Layout já configurado."
+fi
+
 echo "==> Importando chave de acesso"
 if G key import absono-app "$GARAGE_ACCESS_KEY" "$GARAGE_SECRET_KEY" 2>/dev/null; then
   echo "Chave importada."
