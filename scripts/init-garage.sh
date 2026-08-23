@@ -46,7 +46,7 @@ else
 fi
 
 echo "==> Importando chave de acesso"
-if G key import absono-app "$GARAGE_ACCESS_KEY" "$GARAGE_SECRET_KEY"; then
+if G key import "$GARAGE_ACCESS_KEY" "$GARAGE_SECRET_KEY"; then
   echo "Chave importada."
 else
   echo "AVISO: key import falhou acima (ok se for 'already exists')" >&2
