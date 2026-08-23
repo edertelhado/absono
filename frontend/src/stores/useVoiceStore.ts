@@ -429,7 +429,6 @@ export const useVoiceStore = defineStore('voice', () => {
         video: {
           width: { ideal: params.width },
           height: { ideal: params.height },
-          frameRate: { ideal: params.maxFramerate },
         },
         audio: {
           channelCount: 2,
@@ -451,7 +450,7 @@ export const useVoiceStore = defineStore('voice', () => {
         source: Track.Source.ScreenShare,
         videoEncoding: { maxBitrate: params.maxBitrate, maxFramerate: params.maxFramerate },
         simulcast: true,
-        degradationPreference: 'maintain-resolution',
+        degradationPreference: 'balanced',
       })
 
       if (audioTrack) {
