@@ -11,4 +11,10 @@ export const livekitService = {
     const response = await api.get('/livekit/voice-state')
     return response.data
   },
+
+  /** Avisa o backend que saímos da sala — atualiza a sidebar na hora,
+   *  sem depender da latência do webhook do LiveKit */
+  async notifyLeft(channelId: string): Promise<void> {
+    await api.post('/livekit/voice-state/leave', { channelId })
+  },
 }

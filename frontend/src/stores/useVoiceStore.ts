@@ -417,6 +417,12 @@ export const useVoiceStore = defineStore('voice', () => {
 
   async function disconnect() {
     if (room.value) {
+      // Avisa o backend IMEDIATAMENTE (sidebar atualiza na hora, sem webhook)
+      const leavingChannel = joinedChannelId.value
+      if (leavingChannel) {
+        livekitService.notifyLeft(leavingChannel).catch(() => {})
+      }
+
       // Patch otimista na UI antes de derrubar a sessão
       try {
         const { useAuthStore } = await import('@/stores/useAuthStore')
@@ -424,7 +430,7 @@ export const useVoiceStore = defineStore('voice', () => {
         const me = useAuthStore().user
         if (me) {
           useVoiceStateStore().localLeave(me.id)
-          setTimeout(() => useVoiceStateStore().refresh(), 1500)
+          setTimeout(() => useVoiceStateStore().refresh(), 1200)
         }
       } catch {}
 

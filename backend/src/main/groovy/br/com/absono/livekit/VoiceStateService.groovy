@@ -84,6 +84,20 @@ class VoiceStateService {
         }
     }
 
+    /**
+     * Marca entrada direta (sem esperar webhook do LiveKit) — chamado pelo
+     * controller no momento da emissão do token. Webhook continua como
+     * fonte de verdade para quedas de conexão e reconciliação.
+     */
+    synchronized void markJoined(String channelId, String userId, String displayName) {
+        onParticipantJoined(CHANNEL_PREFIX + channelId, userId, displayName)
+    }
+
+    /** Marca saída direta — chamado via REST quando o cliente troca de sala. */
+    synchronized void markLeft(String channelId, String userId) {
+        onParticipantLeft(CHANNEL_PREFIX + channelId, userId)
+    }
+
     synchronized void onTrackStateChanged(String roomName, String identity, String source, boolean published, boolean muted) {
         if (!roomName?.startsWith(CHANNEL_PREFIX) || !identity) return
         def p = rooms[roomName]?.get(identity)

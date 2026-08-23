@@ -67,18 +67,27 @@ class LiveKitController {
         String roomName = "channel-${channel.id}"
         String participantToken = generateLiveKitToken(user.id, user.displayName ?: user.username, roomName)
 
-        // Atualiza o voice state imediatamente para quem entrou aparecer na sidebar
-        CompletableFuture.runAsync {
-            try {
-                voiceStateService.reconcileFromLiveKit()
-            } catch (Exception ignored) {}
-        }
+        // Entrada IMEDIATA no voice state — sem esperar webhook do LiveKit
+        voiceStateService.markJoined(channel.id, user.id, user.displayName ?: user.username)
 
         ResponseEntity.ok([
             serverUrl: serverUrl,
             token: participantToken,
             roomName: roomName,
         ])
+    }
+
+    @PostMapping('/voice-state/leave')
+    ResponseEntity<?> notifyLeft(@RequestBody LeaveRequest request) {
+        User user = userService.getCurrentUser()
+        if (request.channelId) {
+            voiceStateService.markLeft(request.channelId, user.id)
+        }
+        ResponseEntity.ok([ok: true])
+    }
+
+    static class LeaveRequest {
+        String channelId
     }
 
     private String generateLiveKitToken(String identity, String name, String roomName) {
