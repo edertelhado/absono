@@ -53,27 +53,37 @@ export const useVoiceStore = defineStore('voice', () => {
   // entre views (CallPanel desmonta, a chamada continua).
   const remoteAudioEls = new Map<string, HTMLAudioElement>()
 
-  function effectiveVolume(identity: string): number {
+  // Mute exclusivo do áudio de compartilhamento de tela — necessário porque
+  // o loopback do sistema inclui o próprio áudio da chamada (eco)
+  const screenShareAudioMuted = ref(false)
+
+  function effectiveVolume(identity: string, isShare = false): number {
+    if (isShare && screenShareAudioMuted.value) return 0
     return deafened.value ? 0 : (volumes.value[identity] ?? 100) / 100
   }
 
   function applyVolumeToEl(el: HTMLAudioElement) {
     const track = (el as any).__lkTrack as RemoteAudioTrack | undefined
     const identity = (el as any).__identity as string
+    const isShare = !!(el as any).__isShare
     try {
-      track?.setVolume(effectiveVolume(identity))
+      track?.setVolume(effectiveVolume(identity, isShare))
     } catch {
       // track pode ter sido despublicada no meio do ajuste
     }
   }
 
   function syncRemoteAudio() {
-    const wanted = new Map<string, { track: RemoteAudioTrack; identity: string }>()
+    const wanted = new Map<string, { track: RemoteAudioTrack; identity: string; isShare: boolean }>()
     for (const p of participants.value as RemoteParticipant[]) {
       for (const pub of Array.from(p.audioTrackPublications.values())) {
         const track = pub.audioTrack as RemoteAudioTrack | undefined
         if (pub.isSubscribed && track) {
-          wanted.set(pub.trackSid, { track, identity: p.identity })
+          wanted.set(pub.trackSid, {
+            track,
+            identity: p.identity,
+            isShare: pub.source === Track.Source.ScreenShareAudio,
+          })
         }
       }
     }
@@ -93,6 +103,7 @@ export const useVoiceStore = defineStore('voice', () => {
       info.track.attach(el)
       ;(el as any).__lkTrack = info.track
       ;(el as any).__identity = info.identity
+      ;(el as any).__isShare = info.isShare
       if (selectedAudioOutput.value && typeof (el as any).setSinkId === 'function') {
         ;(el as any).setSinkId(selectedAudioOutput.value).catch(() => {})
       }
@@ -121,6 +132,11 @@ export const useVoiceStore = defineStore('voice', () => {
 
   function toggleDeafen() {
     deafened.value = !deafened.value
+    for (const el of remoteAudioEls.values()) applyVolumeToEl(el)
+  }
+
+  function toggleScreenShareAudio() {
+    screenShareAudioMuted.value = !screenShareAudioMuted.value
     for (const el of remoteAudioEls.values()) applyVolumeToEl(el)
   }
 
@@ -660,6 +676,8 @@ export const useVoiceStore = defineStore('voice', () => {
     volumeFor,
     setVolume,
     toggleDeafen,
+    screenShareAudioMuted,
+    toggleScreenShareAudio,
     isMicrophoneEnabled,
     isCameraEnabled,
     isScreenSharing,

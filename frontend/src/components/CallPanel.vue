@@ -390,6 +390,15 @@ async function toggleFullscreen() {
                 <option :value="VideoQuality.MEDIUM">Qualidade: Média</option>
                 <option :value="VideoQuality.LOW">Qualidade: Baixa</option>
               </select>
+              <button
+                v-if="!screenShare.isOwn"
+                class="btn btn-icon btn-sm"
+                :title="voiceStore.screenShareAudioMuted ? 'Ativar áudio do compartilhamento' : 'Silenciar áudio do compartilhamento'"
+                @click="voiceStore.toggleScreenShareAudio()"
+              >
+                <PhSpeakerHigh v-if="!voiceStore.screenShareAudioMuted" :size="16" />
+                <PhSpeakerSlash v-else :size="16" />
+              </button>
               <button v-if="pipSupported" class="btn btn-icon btn-sm" @click="togglePip" title="Picture-in-Picture">
                 <PhCopy :size="16" />
               </button>
@@ -605,7 +614,11 @@ async function toggleFullscreen() {
             <span class="toggle-switch"></span>
             <span class="toggle-label">Compartilhar áudio do sistema</span>
           </label>
-          <div class="setting-hint">Captura o áudio reproduzido no seu computador (Chrome/Edge). Marque "Compartilhar áudio" no diálogo do navegador.</div>
+          <div class="setting-hint">
+            Captura o áudio reproduzido no seu computador (Chrome/Edge). Marque "Compartilhar áudio" no diálogo do navegador.
+            ⚠️ O áudio do sistema inclui a própria chamada — quem assiste pode se escutar em eco; há um botão de alto-falante
+            no canto do compartilhamento para silenciar só esse áudio.
+          </div>
         </div>
 
         <div class="dialog-footer">
