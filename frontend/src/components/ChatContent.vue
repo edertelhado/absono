@@ -572,11 +572,20 @@ onBeforeUnmount(() => {
                   <a :href="downloadUrl(attachment)" class="attachment-download">Baixar</a>
                 </span>
               </template>
-              <a v-else :href="downloadUrl(attachment)" class="attachment-file">
-                <PhFile :size="18" />
-                <span class="attachment-name">{{ attachment.fileName }}</span>
-                <span class="attachment-size">{{ formatFileSize(attachment.fileSize) }}</span>
-              </a>
+              <div v-else class="attachment-file">
+                <a :href="attachment.url" target="_blank" rel="noopener" class="attachment-file-main">
+                  <PhFile :size="18" />
+                  <span class="attachment-name">{{ attachment.fileName }}</span>
+                  <span class="attachment-size">{{ formatFileSize(attachment.fileSize) }}</span>
+                </a>
+                <a
+                  :href="downloadUrl(attachment)"
+                  class="btn-icon btn-sm attachment-file-download"
+                  title="Baixar arquivo"
+                >
+                  <PhDownload :size="16" />
+                </a>
+              </div>
             </div>
           </div>
 
@@ -1081,12 +1090,31 @@ onBeforeUnmount(() => {
 .attachment-file {
   display: flex;
   align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--absono-surface-2);
+  border-radius: var(--radius-md);
+}
+
+.attachment-file-main {
+  display: flex;
+  align-items: center;
   gap: var(--space-sm);
   text-decoration: none;
   color: var(--absono-text);
+  min-width: 0;
 
   &:hover .attachment-name {
     text-decoration: underline;
+  }
+}
+
+.attachment-file-download {
+  flex-shrink: 0;
+  color: var(--absono-text-muted);
+
+  &:hover {
+    color: var(--absono-primary);
   }
 }
 
