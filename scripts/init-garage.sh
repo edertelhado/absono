@@ -38,10 +38,10 @@ else
 fi
 
 echo "==> Importando chave de acesso"
-if G key import absono-app "$GARAGE_ACCESS_KEY" "$GARAGE_SECRET_KEY" 2>/dev/null; then
+if G key import absono-app "$GARAGE_ACCESS_KEY" "$GARAGE_SECRET_KEY"; then
   echo "Chave importada."
 else
-  echo "Chave já existe (ou falha ao importar), seguindo..."
+  echo "AVISO: key import falhou acima (ok se for 'already exists')" >&2
 fi
 
 echo "==> Criando bucket '$GARAGE_BUCKET'"
@@ -59,5 +59,9 @@ docker run --rm --network host \
   s3api delete-bucket-cors --bucket "$GARAGE_BUCKET" \
   || echo "AVISO: nenhum CORS para remover (ok)"
 
-echo "==> Concluído. Resumo:"
-G key info "$GARAGE_ACCESS_KEY" || true
+echo "==> Verificação final"
+echo "--- Chaves:"
+G key list || true
+echo "--- Buckets:"
+G bucket list || true
+echo "==> Concluído."
