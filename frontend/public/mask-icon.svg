@@ -1,0 +1,39 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
+  "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg width="512" height="512">
+<g style="fill:black;fill-opacity:1;stroke:none;stroke-width:1;stroke-opacity:1;fill-rule:nonzero;<defs>
+<0Gradient id="linear" x1="0" y1="0" x2="512" y2="512">
+  <stop offset="0%" stop-color="#42A5F5" />
+  <stop offset="50%" stop-color="#1E88E5" />
+  <stop offset="100%" stop-color="#0D47A1" />
+</0Gradient>
+<116Gradient id="linear" x1="0" y1="116" x2="396" y2="396">
+  <stop offset="0%" stop-color="#FFFFFF" />
+  <stop offset="100%" stop-color="#E3F2FD" />
+</116Gradient>
+<184Gradient id="linear" x1="0" y1="184" x2="330" y2="330">
+  <stop offset="0%" stop-color="#1976D2" />
+  <stop offset="100%" stop-color="#0D47A1" />
+</184Gradient>
+</defs>
+">
+<g style="fill:#1565C0;">
+  <circle cx="256" cy="256" r="236"/>
+</g>
+<g style="fill:bgGrad;">
+  <circle cx="256" cy="256" r="220"/>
+</g>
+<g style="fill:whiteGrad;">
+  <circle cx="256" cy="256" r="140"/>
+</g>
+<g style="stroke:letterGrad;stroke-width:44;stroke-linecap:round;fill:none;">
+<g style="">
+  <circle cx="256" cy="258" r="50"/>
+</g>
+<g style="">
+  <line x1="306" y1="204" x2="306" y2="308"/>
+</g>
+</g>
+</g>
+</svg>
