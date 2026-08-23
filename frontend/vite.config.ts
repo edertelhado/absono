@@ -28,9 +28,14 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: true,
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        // Navegações para /api (ex.: download de anexo ?download=true)
+        // NÃO devem receber o index.html do SPA
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api\//, /^\/livekit\//],
         runtimeCaching: [
           {
-            urlPattern: /^\/api\/.*/i,
+            // files/ fora do cache: binários grandes não pertencem ao api-cache
+            urlPattern: /^\/api\/(?!files\/).*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
