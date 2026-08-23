@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { usePresenceStore } from '@/stores/usePresenceStore'
 import { authService } from '@/services/auth'
@@ -9,14 +9,12 @@ import type { Invite } from '@/services/invite'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { getAvatarUrl } from '@/utils'
-import type { UserStatus, UserRole } from '@/types'
+import type { UserRole } from '@/types'
 import {
   DialogRoot,
   DialogPortal,
   DialogOverlay,
   DialogContent,
-  SwitchRoot,
-  SwitchThumb,
   SelectRoot,
   SelectTrigger,
   SelectValue,
@@ -29,13 +27,11 @@ import {
   PhCamera,
   PhFloppyDisk,
   PhKey,
-  PhPalette,
   PhUserPlus,
   PhTrash,
   PhCopy,
   PhCheck,
   PhX,
-  PhShield,
 } from '@phosphor-icons/vue'
 
 const toast = useToast()
@@ -46,7 +42,6 @@ const presenceStore = usePresenceStore()
 const displayName = ref('')
 const bio = ref('')
 const loading = ref(false)
-const statusLoading = ref(false)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const avatarUploading = ref(false)
 
@@ -55,12 +50,53 @@ const newPassword = ref('')
 const confirmPassword = ref('')
 const passwordLoading = ref(false)
 
-const STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
-  { value: 'ONLINE', label: 'Online' },
-  { value: 'AWAY', label: 'Ausente' },
-  { value: 'DO_NOT_DISTURB', label: 'Não perturbar' },
-  { value: 'INVISIBLE', label: 'Invisível' },
-]
+const microphones = ref<MediaDeviceInfo[]>([])
+const speakers = ref<MediaDeviceInfo[]>([])
+const cameras = ref<MediaDeviceInfo[]>([])
+const selectedMic = ref(localStorage.getItem('absono_device_mic') || 'default')
+const selectedSpeaker = ref(localStorage.getItem('absono_device_speaker') || 'default')
+const selectedCamera = ref(localStorage.getItem('absono_device_camera') || 'default')
+
+function persistDevice(kind: 'mic' | 'speaker' | 'camera') {
+  if (kind === 'mic') localStorage.setItem('absono_device_mic', selectedMic.value)
+  if (kind === 'speaker') localStorage.setItem('absono_device_speaker', selectedSpeaker.value)
+  if (kind === 'camera') localStorage.setItem('absono_device_camera', selectedCamera.value)
+}
+
+async function loadDevices() {
+  try {
+    // Pede permissão uma vez para obter os labels dos dispositivos
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+    stream.getTracks().forEach(t => t.stop())
+  } catch {
+    // Sem permissão: lista aparece sem labels, tudo bem
+  }
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  microphones.value = devices.filter(d => d.kind === 'audioinput')
+  speakers.value = devices.filter(d => d.kind === 'audiooutput')
+  cameras.value = devices.filter(d => d.kind === 'videoinput')
+}
+
+function deviceLabel(device: MediaDeviceInfo, index: number): string {
+  return device.label || `${device.kind === 'videoinput' ? 'Câmera' : 'Dispositivo'} ${index + 1}`
+}
+
+onMounted(async () => {
+  if (authStore.user) {
+    displayName.value = authStore.user.displayName || ''
+    bio.value = authStore.user.bio || ''
+  }
+  await loadDevices()
+  navigator.mediaDevices?.addEventListener?.('devicechange', loadDevices)
+  if (isAdmin.value) {
+    await presenceStore.fetchUsers()
+    await loadInvites()
+  }
+})
+
+onBeforeUnmount(() => {
+  navigator.mediaDevices?.removeEventListener?.('devicechange', loadDevices)
+})
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'USER', label: 'Usuário' },
@@ -75,17 +111,6 @@ const inviteMaxUses = ref(1)
 const inviteDuration = ref(15)
 const inviteLoading = ref(false)
 const generatedInviteLink = ref('')
-
-onMounted(async () => {
-  if (authStore.user) {
-    displayName.value = authStore.user.displayName || ''
-    bio.value = authStore.user.bio || ''
-  }
-  if (isAdmin.value) {
-    await presenceStore.fetchUsers()
-    await loadInvites()
-  }
-})
 
 async function loadInvites() {
   try {
@@ -174,18 +199,6 @@ async function saveProfile() {
     toast.error(e.response?.data?.message || 'Erro ao atualizar perfil')
   } finally {
     loading.value = false
-  }
-}
-
-async function changeStatus(status: UserStatus) {
-  statusLoading.value = true
-  try {
-    await authStore.updateStatus(status)
-    toast.success('Status atualizado')
-  } catch (e: any) {
-    toast.error(e.response?.data?.message || 'Erro ao atualizar status')
-  } finally {
-    statusLoading.value = false
   }
 }
 
@@ -283,27 +296,6 @@ async function changeUserRole(userId: string, role: UserRole) {
             </div>
 
             <div class="form-group">
-              <label class="form-label">Status</label>
-              <SelectRoot
-                :model-value="authStore.user?.status || 'ONLINE'"
-                @update:model-value="(val: any) => changeStatus(val as UserStatus)"
-              >
-                <SelectTrigger class="select-trigger">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem
-                    v-for="option in STATUS_OPTIONS"
-                    :key="option.value"
-                    :value="option.value"
-                  >
-                    <SelectItemText>{{ option.label }}</SelectItemText>
-                  </SelectItem>
-                </SelectContent>
-              </SelectRoot>
-            </div>
-
-            <div class="form-group">
               <label class="form-label">Nome de Exibição</label>
               <input v-model="displayName" type="text" class="input" placeholder="Seu nome" />
             </div>
@@ -313,7 +305,7 @@ async function changeUserRole(userId: string, role: UserRole) {
               <textarea v-model="bio" class="textarea" rows="3" placeholder="Conte sobre você..."></textarea>
             </div>
 
-            <button type="submit" class="btn btn-primary" :disabled="loading">
+            <button type="submit" class="btn btn-primary save-btn" :disabled="loading">
               <PhFloppyDisk v-if="!loading" :size="16" />
               <span v-else class="spinner"></span>
               Salvar Alterações
@@ -330,42 +322,36 @@ async function changeUserRole(userId: string, role: UserRole) {
         <div class="card-body">
           <div class="form-group">
             <label class="form-label">Microfone Padrão</label>
-            <select class="select-trigger">
+            <select v-model="selectedMic" class="input" @change="persistDevice('mic')">
               <option value="default">Padrão do sistema</option>
+              <option v-for="(d, i) in microphones" :key="d.deviceId" :value="d.deviceId">
+                {{ deviceLabel(d, i) }}
+              </option>
             </select>
           </div>
 
           <div class="form-group">
             <label class="form-label">Alto-falante Padrão</label>
-            <select class="select-trigger">
+            <select v-model="selectedSpeaker" class="input" @change="persistDevice('speaker')">
               <option value="default">Padrão do sistema</option>
+              <option v-for="(d, i) in speakers" :key="d.deviceId" :value="d.deviceId">
+                {{ deviceLabel(d, i) }}
+              </option>
             </select>
           </div>
 
           <div class="form-group">
             <label class="form-label">Câmera Padrão</label>
-            <select class="select-trigger">
-              <option value="none">Nenhuma</option>
+            <select v-model="selectedCamera" class="input" @change="persistDevice('camera')">
+              <option value="default">Nenhuma</option>
+              <option v-for="(d, i) in cameras" :key="d.deviceId" :value="d.deviceId">
+                {{ deviceLabel(d, i) }}
+              </option>
             </select>
           </div>
-        </div>
-      </div>
-
-      <!-- Appearance Card -->
-      <div class="card settings-card">
-        <div class="card-header">
-          <span class="card-header-title">Aparência</span>
-        </div>
-        <div class="card-body">
-          <div class="form-group">
-            <label class="form-label">Tema</label>
-            <div class="switch-row">
-              <SwitchRoot :model-value="true" class="switch-root">
-                <SwitchThumb class="switch-thumb" />
-              </SwitchRoot>
-              <span class="switch-label">Escuro</span>
-            </div>
-          </div>
+          <p v-if="!microphones.length && !cameras.length" class="devices-hint">
+            Permita o acesso à câmera/microfone no navegador para listar os dispositivos.
+          </p>
         </div>
       </div>
 
@@ -507,6 +493,16 @@ async function changeUserRole(userId: string, role: UserRole) {
   margin-bottom: var(--space-lg);
 }
 
+.save-btn {
+  margin-top: var(--space-lg);
+  width: 100%;
+}
+
+.devices-hint {
+  font-size: 12px;
+  color: var(--absono-text-muted);
+}
+
 .avatar-section {
   display: flex;
   align-items: center;
@@ -611,17 +607,6 @@ async function changeUserRole(userId: string, role: UserRole) {
   flex-direction: column;
   gap: var(--space-sm);
   width: 100%;
-}
-
-.switch-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.switch-label {
-  font-size: 14px;
-  color: var(--absono-text);
 }
 
 .invite-create {
