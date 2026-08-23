@@ -53,13 +53,17 @@ function applyMention(username: string) {
   messageInput.value = (messageInput.value ?? '').replace(/@([A-Za-z0-9_]*)$/, `@${username} `)
 }
 
-function onEnterKey() {
+function onEnterKey(e: KeyboardEvent) {
+  if (e.shiftKey) return
+  e.preventDefault()
   if (mentionOpen.value && mentionMatches.value.length > 0) {
     applyMention(mentionMatches.value[0].username)
     return
   }
   sendMessage()
 }
+
+const showPreview = ref(false)
 
 // ===== Thread =====
 const threadInput = ref('')
@@ -589,10 +593,11 @@ onBeforeUnmount(() => {
 
         <el-input
           v-model="messageInput"
-          placeholder="Enviar mensagem..."
-          @keyup.enter="onEnterKey"
+          type="textarea"
+          :autosize="{ minRows: 1, maxRows: 8 }"
+          placeholder="Enviar mensagem... (Shift+Enter para nova linha)"
+          @keydown.enter.exact="onEnterKey"
           @input="onInputTyping"
-          size="large"
           class="message-input"
         />
 
@@ -605,6 +610,17 @@ onBeforeUnmount(() => {
         >
           <el-icon><Promotion /></el-icon>
         </el-button>
+      </div>
+
+      <div v-if="messageInput.trim()" class="input-footer">
+        <el-button text size="small" @click="showPreview = !showPreview">
+          <el-icon><View v-if="!showPreview" /><Hide v-else /></el-icon>
+          {{ showPreview ? 'Ocultar preview' : 'Preview Markdown' }}
+        </el-button>
+      </div>
+
+      <div v-if="showPreview && messageInput.trim()" class="markdown-preview">
+        <div class="md" v-html="renderRichMessage(messageInput, knownUsernames)"></div>
       </div>
     </div>
 
@@ -1294,7 +1310,7 @@ onBeforeUnmount(() => {
 .input-row {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-sm);
   background: var(--absono-surface-2);
   border-radius: var(--radius-lg);
@@ -1351,13 +1367,31 @@ onBeforeUnmount(() => {
 .message-input {
   flex: 1;
 
-  :deep(.el-input__wrapper) {
+  :deep(.el-textarea__inner) {
     background: transparent;
     box-shadow: none;
+    border: none;
+    resize: none;
+    padding: 4px 0;
+    line-height: 1.5;
   }
+}
 
-  :deep(.el-input__inner) {
-    background: transparent;
-  }
+.input-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--space-sm);
+}
+
+.markdown-preview {
+  margin: var(--space-xs) var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--absono-surface-2);
+  border: 1px solid var(--absono-border);
+  border-radius: var(--radius-md);
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 14px;
+  color: var(--absono-text);
 }
 </style>
