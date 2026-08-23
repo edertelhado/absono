@@ -42,10 +42,16 @@ class WebSocketService {
   subscribeToChannel(channelId: string, handler: MessageHandler) {
     const topic = `/topic/channels/${channelId}`
 
-    if (!this.handlers.has(topic)) {
-      this.handlers.set(topic, [])
+    // Substitui handlers anteriores em vez de acumular — visitar o mesmo
+    // canal duas vezes não deve processar cada mensagem N vezes
+    this.handlers.set(topic, [handler])
+
+    // Re-inscreve no cliente atual se necessário
+    const existing = this.subscriptions.get(topic)
+    if (existing && this.client && this.connected) {
+      try { existing.unsubscribe() } catch {}
+      this.subscriptions.delete(topic)
     }
-    this.handlers.get(topic)!.push(handler)
 
     if (this.client && this.connected) {
       this.doSubscribe(topic)

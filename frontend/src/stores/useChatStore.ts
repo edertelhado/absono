@@ -26,6 +26,10 @@ export const useChatStore = defineStore('chat', () => {
 
   function setCurrentChannel(channelId: string) {
     if (currentChannelId.value !== channelId) {
+      // Para de escutar o canal anterior antes de trocar
+      if (currentChannelId.value) {
+        webSocketService.unsubscribeFromChannel(currentChannelId.value)
+      }
       currentChannelId.value = channelId
       messages.value = []
       hasMore.value = true
@@ -139,7 +143,10 @@ export const useChatStore = defineStore('chat', () => {
           if (data.data?.userId) clearTyping(data.data.userId)
           break
         }
-        messages.value.push(data.data)
+        const dup = messages.value.some(m => m.id === data.data.id)
+        if (!dup) {
+          messages.value.push(data.data)
+        }
         if (data.data?.userId) {
           clearTyping(data.data.userId)
         }
