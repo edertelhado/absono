@@ -101,20 +101,9 @@ function configureMediaAndCertificates() {
   ses.setPermissionCheckHandler((_webContents, permission) => allowedPermissions.has(permission))
 
   // navigator.mediaDevices.getDisplayMedia() no renderer precisa deste handler
+  // useSystemPicker: true faz o Electron abrir o seletor nativo de tela/janela
   ses.setDisplayMediaRequestHandler((_request, callback) => {
-    desktopCapturer.getSources({ types: ['screen'] }).then((screens) => {
-      if (screens.length > 0) {
-        const streams = { video: screens[0] }
-        if (process.platform === 'win32' || process.platform === 'darwin') {
-          streams.audio = 'loopback'
-        }
-        callback(streams)
-        return
-      }
-      desktopCapturer.getSources({ types: ['window'] }).then((windows) => {
-        callback(windows.length > 0 ? { video: windows[0] } : {})
-      }).catch(() => callback({}))
-    }).catch(() => callback({}))
+    callback({})
   }, { useSystemPicker: true })
 }
 
