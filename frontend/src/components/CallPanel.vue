@@ -4,7 +4,9 @@ import type { RemoteParticipant, RemoteVideoTrack, LocalVideoTrack } from 'livek
 import { VideoQuality } from 'livekit-client'
 import { useChannelStore } from '@/stores/useChannelStore'
 import { useVoiceStore } from '@/stores/useVoiceStore'
+import { usePresenceStore } from '@/stores/usePresenceStore'
 import { useToast } from '@/composables/useToast'
+import { getAvatarUrl } from '@/utils'
 import { RESOLUTION_OPTIONS, FPS_OPTIONS } from '@/utils/livekit-presets'
 import type { ScreenResolution, ScreenFPS } from '@/utils/livekit-presets'
 import {
@@ -21,6 +23,7 @@ import {
 const toast = useToast()
 const channelStore = useChannelStore()
 const voiceStore = useVoiceStore()
+const presenceStore = usePresenceStore()
 
 const channel = computed(() => channelStore.currentChannel)
 const connected = computed(() => voiceStore.connected)
@@ -41,6 +44,7 @@ interface Tile {
   cameraTrack: RemoteVideoTrack | LocalVideoTrack | null
   micMuted: boolean
   isSpeaking: boolean
+  sharing: boolean
 }
 
 interface ScreenShareInfo {
@@ -63,6 +67,7 @@ const tiles = computed<Tile[]>(() => {
       cameraTrack: voiceStore.getCameraTrack(p) ?? null,
       micMuted: !p.isMicrophoneEnabled,
       isSpeaking: voiceStore.activeSpeakers.has(p.identity),
+      sharing: !!voiceStore.getRemoteScreenShare(p),
     })
   }
 
@@ -75,28 +80,45 @@ const tiles = computed<Tile[]>(() => {
       cameraTrack: voiceStore.getLocalCameraTrack() ?? null,
       micMuted: !voiceStore.isMicrophoneEnabled,
       isSpeaking: voiceStore.activeSpeakers.has(lp.identity),
+      sharing: !!voiceStore.getLocalScreenShare(),
     })
   }
 
   return list
 })
 
-const screenShare = computed<ScreenShareInfo | null>(() => {
+function avatarFor(identity: string): string {
+  const user = presenceStore.users.find(u => u.id === identity)
+  return getAvatarUrl(user?.avatarUrl, identity === 'own' ? 'Você' : (user?.username || identity))
+}
+
+const screenShares = computed<ScreenShareInfo[]>(() => {
   void voiceStore.revision
+  const list: ScreenShareInfo[] = []
 
   const ownTrack = voiceStore.getLocalScreenShare()
   if (ownTrack) {
-    return { key: 'own-screen', identity: 'own', name: 'Você está compartilhando sua tela', isOwn: true, track: ownTrack }
+    list.push({ key: 'own-screen', identity: 'own', name: 'Sua tela', isOwn: true, track: ownTrack })
   }
 
   for (const p of voiceStore.participants as RemoteParticipant[]) {
     const track = voiceStore.getRemoteScreenShare(p)
     if (track) {
-      return { key: `${p.identity}-screen`, identity: p.identity, name: `Tela de ${p.name || p.identity}`, isOwn: false, track }
+      list.push({ key: `${p.identity}-screen`, identity: p.identity, name: `Tela de ${p.name || p.identity}`, isOwn: false, track })
     }
   }
-  return null
+  return list
 })
+
+// Qual compartilhamento está ampliado no spotlight; padrão = primeiro
+const focusedShareKey = ref<string | null>(null)
+const screenShare = computed<ScreenShareInfo | null>(() => {
+  if (!screenShares.value.length) return null
+  return screenShares.value.find(s => s.key === focusedShareKey.value) ?? screenShares.value[0]
+})
+const otherShares = computed<ScreenShareInfo[]>(() =>
+  screenShares.value.filter(s => s.key !== screenShare.value?.key)
+)
 
 const pinnedTile = computed<Tile | null>(() => {
   if (!pinnedIdentity.value) return null
@@ -362,9 +384,7 @@ async function toggleFullscreen() {
               class="spotlight-video"
             ></video>
             <div v-else class="spotlight-avatar">
-              <div class="avatar-placeholder avatar-lg">
-                <PhUser :size="48" />
-              </div>
+              <img class="avatar-photo avatar-lg" :src="avatarFor(pinnedTile.key)" alt="" />
             </div>
           </template>
           <template v-else-if="screenShare">
@@ -415,6 +435,28 @@ async function toggleFullscreen() {
           </template>
         </div>
 
+        <div v-if="otherShares.length" class="shares-strip">
+          <button
+            v-for="ss in otherShares"
+            :key="`strip-${ss.key}`"
+            class="share-thumb"
+            :title="`Ver ${ss.name}`"
+            @click="focusedShareKey = ss.key"
+          >
+            <video
+              :ref="(el) => bindVideo(el, `strip-${ss.key}`, ss.track)"
+              autoplay
+              playsinline
+              muted
+              class="share-thumb-video"
+            ></video>
+            <span class="share-thumb-label">
+              <PhMonitor :size="12" />
+              {{ ss.name }}
+            </span>
+          </button>
+        </div>
+
         <div class="participants-grid" :class="{ compact: !!(pinnedTile || screenShare) }">
           <div
             v-for="tile in tiles"
@@ -432,10 +474,12 @@ async function toggleFullscreen() {
               class="tile-video"
             ></video>
             <div v-else class="avatar-wrap">
-              <div class="avatar-placeholder">
-                <PhUser :size="32" />
-              </div>
+              <img class="avatar-photo" :src="avatarFor(tile.key)" alt="" />
             </div>
+            <span v-if="tile.sharing" class="sharing-indicator">
+              <PhMonitor :size="12" />
+              tela
+            </span>
             <span class="participant-name">{{ tile.name }}</span>
             <PopoverRoot v-if="!tile.isLocal">
               <PopoverTrigger as-child>
@@ -903,6 +947,78 @@ async function toggleFullscreen() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.avatar-photo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+
+  &.avatar-lg {
+    width: 96px;
+    height: 96px;
+  }
+}
+
+.sharing-indicator {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: rgba(30, 136, 229, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.shares-strip {
+  display: flex;
+  gap: var(--space-sm);
+  padding: 0 var(--space-md) var(--space-sm);
+  overflow-x: auto;
+}
+
+.share-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 200px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  background: #000;
+  padding: 0;
+
+  &:hover {
+    border-color: var(--absono-primary);
+  }
+}
+
+.share-thumb-video {
+  display: block;
+  width: 100%;
+  height: 100px;
+  object-fit: contain;
+}
+
+.share-thumb-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px var(--space-xs);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 11px;
 }
 
 .avatar-placeholder {

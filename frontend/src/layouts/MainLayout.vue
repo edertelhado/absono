@@ -3,6 +3,7 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useChannelStore } from '@/stores/useChannelStore'
+import { channelService } from '@/services/channel'
 import { useChatStore } from '@/stores/useChatStore'
 import { useVoiceStore } from '@/stores/useVoiceStore'
 import { usePresenceStore } from '@/stores/usePresenceStore'
@@ -59,10 +60,11 @@ onMounted(async () => {
   presenceStore.init()
   voiceStateStore.init()
 
-  const granted = await checkPermission()
+  let granted = await checkPermission()
   if (!granted) {
-    await requestPermission()
+    granted = await requestPermission()
   }
+  notifyGranted.value = granted
 
   webSocketService.subscribeToNotifications((data) => {
     handleNotification(data)
@@ -86,6 +88,16 @@ onMounted(async () => {
   }
 })
 
+const notifyGranted = ref(false)
+
+function notifyFallback(title: string, body: string) {
+  if (notifyGranted.value && document.hidden) {
+    sendNotification(title, body)
+  } else {
+    toast.info(title, body)
+  }
+}
+
 function handleNotification(data: any) {
   if (data?.type !== 'NEW_MESSAGE' || !data.data) return
 
@@ -101,7 +113,7 @@ function handleNotification(data: any) {
     if (!document.hidden) {
       toast.warning(`${authorName} mencionou você em #${channelName}`)
     } else {
-      sendNotification(`@${authorName}`, `#${channelName}: ${content}`)
+      notifyFallback(`@${authorName}`, `#${channelName}: ${content}`)
     }
     return
   }
@@ -110,9 +122,8 @@ function handleNotification(data: any) {
 
   if (!isViewingChannel) {
     unreadStore.increment(msgChannelId)
+    notifyFallback(authorName, content)
   }
-
-  sendNotification(authorName, `#${channelName}: ${content}`)
 }
 
 watch(channelId, async (id) => {
@@ -145,6 +156,19 @@ function openSettings() {
   router.push('/settings')
 }
 
+async function handleOpenDm(user: any) {
+  try {
+    const { channelId } = await channelService.openDmWith(user.id)
+    if (!channelStore.channels.some(c => c.id === channelId)) {
+      await channelStore.fetchChannels()
+    }
+    const ch = channelStore.channels.find(c => c.id === channelId)
+    if (ch) selectChannel(ch)
+  } catch {
+    toast.error('Não foi possível abrir a conversa')
+  }
+}
+
 function selectChannel(channel: { id: string }) {
   closeSidebar()
   router.push(`/channel/${channel.id}`)
@@ -163,6 +187,7 @@ function selectChannel(channel: { id: string }) {
       @select-channel="selectChannel"
       @logout="handleLogout"
       @open-settings="openSettings"
+      @open-dm="handleOpenDm"
     />
 
     <!-- Mobile header -->
@@ -213,6 +238,7 @@ function selectChannel(channel: { id: string }) {
         @select-channel="selectChannel"
         @logout="handleLogout"
         @open-settings="openSettings"
+        @open-dm="handleOpenDm"
       />
     </div>
 

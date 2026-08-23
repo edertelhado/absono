@@ -50,6 +50,7 @@ const emit = defineEmits<{
   selectChannel: [channel: Channel]
   logout: []
   openSettings: []
+  openDm: [user: any]
 }>()
 
 const channelStore = useChannelStore()
@@ -145,6 +146,20 @@ function canManageChannel(channel: Channel): boolean {
 const textChannels = computed(() => props.channels.filter(c => c.type === 'TEXT' && c.active))
 const directChannels = computed(() => props.channels.filter(c => c.type === 'DIRECT' && c.active))
 const voiceChannels = computed(() => props.channels.filter(c => c.type === 'VOICE' && c.active))
+
+const onlineUsers = computed(() =>
+  presenceStore.users
+    .filter(u => u.id !== props.user?.id && presenceStore.isOnline(u.id))
+    .sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username))
+)
+
+function statusClass(status: UserStatus): string {
+  return `status-${(status || 'OFFLINE').toLowerCase()}`
+}
+
+function startDm(user: any) {
+  emit('openDm', user)
+}
 
 async function createChannel() {
   if (!newChannelName.value.trim()) {
@@ -264,6 +279,30 @@ function participantName(p: VoiceParticipant): string {
             <span class="channel-name">{{ channel.peerName || channel.peerUsername }}</span>
             <span v-if="unreadLabel(channel.id)" class="unread-badge">{{ unreadLabel(channel.id) }}</span>
           </div>
+        </template>
+      </div>
+
+      <!-- Online -->
+      <div class="channel-section">
+        <div class="section-header" @click="toggleSection('online')">
+          <PhCaretDown class="section-chevron" :class="{ collapsed: isCollapsed('online') }" :size="11" />
+          <span class="section-title">Online — {{ onlineUsers.length }}</span>
+        </div>
+        <template v-if="!isCollapsed('online')">
+          <div
+            v-for="u in onlineUsers"
+            :key="u.id"
+            class="online-user"
+            :title="`Conversar com ${u.displayName || u.username}`"
+            @click="startDm(u)"
+          >
+            <div class="online-avatar-wrap">
+              <img class="online-avatar" :src="getAvatarUrl(u.avatarUrl, u.username)" alt="" />
+              <span class="status-dot" :class="statusClass(presenceStore.getStatus(u.id))" />
+            </div>
+            <span class="online-name">{{ u.displayName || u.username }}</span>
+          </div>
+          <p v-if="!onlineUsers.length" class="online-empty">Ninguém online</p>
         </template>
       </div>
 
@@ -595,6 +634,52 @@ function participantName(p: VoiceParticipant): string {
   border-radius: 50%;
   flex-shrink: 0;
   object-fit: cover;
+}
+
+.online-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 5px var(--space-md);
+  margin: 0 var(--space-xs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+
+  &:hover {
+    background-color: var(--absono-surface-2);
+    .online-name {
+      color: var(--absono-text);
+    }
+  }
+}
+
+.online-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.online-avatar {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.online-name {
+  font-size: 13px;
+  color: var(--absono-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-empty {
+  padding: 4px var(--space-md);
+  font-size: 12px;
+  color: var(--absono-text-muted);
+  font-style: italic;
 }
 
 .unread-badge {
