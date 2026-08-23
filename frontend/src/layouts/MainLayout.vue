@@ -12,10 +12,9 @@ import { useUnreadStore } from '@/stores/useUnreadStore'
 import { webSocketService } from '@/services/websocket'
 import { checkPermission, requestPermission, sendNotification } from '@/services/notification'
 import { useToast } from '@/composables/useToast'
-import { PhList, PhUser } from '@phosphor-icons/vue'
+import { PhList, PhChatCircle, PhPhone, PhUsers, PhGearSix } from '@phosphor-icons/vue'
 import ChannelSidebar from '@/components/ChannelSidebar.vue'
 import ChatContent from '@/components/ChatContent.vue'
-import UserSidebar from '@/components/UserSidebar.vue'
 import CallPanel from '@/components/CallPanel.vue'
 import VoiceStatusBar from '@/components/VoiceStatusBar.vue'
 
@@ -31,26 +30,26 @@ const permissionStore = usePermissionStore()
 const unreadStore = useUnreadStore()
 const toast = useToast()
 
-// gavetas laterais em telas pequenas
-const channelsOpen = ref(false)
-const usersOpen = ref(false)
-function closeDrawers() {
-  channelsOpen.value = false
-  usersOpen.value = false
+const sidebarOpen = ref(false)
+const isDesktop = ref(window.innerWidth > 768)
+
+function closeSidebar() {
+  sidebarOpen.value = false
 }
+
 function onResize() {
-  if (window.innerWidth > 1100) usersOpen.value = false
-  if (window.innerWidth > 820) channelsOpen.value = false
+  isDesktop.value = window.innerWidth > 768
+  if (isDesktop.value) sidebarOpen.value = false
 }
 
 const channelId = computed(() => route.params.id as string)
+const isVoiceChannel = computed(() => channelStore.currentChannel?.type === 'VOICE')
+const currentChannelName = computed(() => channelStore.currentChannel?.name ?? '')
 
 async function loadChannelPermissions(id: string) {
   try {
     await permissionStore.fetchEffective(id)
-  } catch {
-    // Sem acesso ao canal — a listagem já filtra
-  }
+  } catch {}
 }
 
 onMounted(async () => {
@@ -88,7 +87,6 @@ onMounted(async () => {
 })
 
 function handleNotification(data: any) {
-  console.log('[NOTIF]', JSON.stringify(data?.data)?.slice(0,160))
   if (data?.type !== 'NEW_MESSAGE' || !data.data) return
 
   const { channelId: msgChannelId, authorId, authorName, channelName, content } = data.data
@@ -143,40 +141,80 @@ async function handleLogout() {
 }
 
 function openSettings() {
+  closeSidebar()
   router.push('/settings')
+}
+
+function selectChannel(channelId: string) {
+  closeSidebar()
+  router.push(`/channel/${channelId}`)
 }
 </script>
 
 <template>
   <div class="main-layout">
+    <!-- Desktop sidebar -->
     <ChannelSidebar
-      class="sb-channels"
-      :class="{ open: channelsOpen }"
+      v-if="isDesktop"
+      class="sidebar-desktop"
       :channels="channelStore.channels"
       :current-channel="channelStore.currentChannel"
       :user="authStore.user"
-      @select-channel="(ch) => { closeDrawers(); router.push(`/channel/${ch.id}`) }"
+      @select-channel="selectChannel"
       @logout="handleLogout"
       @open-settings="openSettings"
     />
 
-    <div class="main-content">
+    <!-- Mobile header -->
+    <header class="mobile-header" v-if="!isDesktop">
+      <button class="btn-icon" @click="sidebarOpen = !sidebarOpen">
+        <PhList :size="20" />
+      </button>
+      <span class="mobile-header-title">{{ currentChannelName }}</span>
+    </header>
+
+    <!-- Main content -->
+    <div class="main-content" :class="{ 'has-mobile-header': !isDesktop, 'has-mobile-nav': !isDesktop }">
       <ChatContent v-if="['TEXT', 'DIRECT'].includes((channelStore.currentChannel?.type ?? 'TEXT'))" />
-
-      <CallPanel v-else-if="channelStore.currentChannel?.type === 'VOICE'" />
-
+      <CallPanel v-else-if="isVoiceChannel" />
       <VoiceStatusBar />
     </div>
 
-    <UserSidebar class="sb-users" :class="{ open: usersOpen }" />
+    <!-- Mobile bottom nav -->
+    <nav class="mobile-nav" v-if="!isDesktop">
+      <button class="mobile-nav-item" :class="{ active: !isVoiceChannel }" @click="sidebarOpen = true">
+        <PhChatCircle :size="20" />
+        <span>Chat</span>
+      </button>
+      <button class="mobile-nav-item" :class="{ active: isVoiceChannel }" @click="sidebarOpen = true">
+        <PhPhone :size="20" />
+        <span>Voz</span>
+      </button>
+      <button class="mobile-nav-item" @click="sidebarOpen = true">
+        <PhUsers :size="20" />
+        <span>Online</span>
+      </button>
+      <button class="mobile-nav-item" @click="openSettings">
+        <PhGearSix :size="20" />
+        <span>Config</span>
+      </button>
+    </nav>
 
-    <div v-if="channelsOpen || usersOpen" class="mobile-backdrop" @click="closeDrawers"></div>
-    <button class="mobile-fab fab-left" title="Canais" @click="channelsOpen = !channelsOpen; usersOpen = false">
-      <PhList :size="20" />
-    </button>
-    <button class="mobile-fab fab-right" title="Usuários" @click="usersOpen = !usersOpen; channelsOpen = false">
-      <PhUser :size="20" />
-    </button>
+    <!-- Mobile sidebar drawer -->
+    <ChannelSidebar
+      v-if="!isDesktop"
+      class="sidebar-mobile"
+      :class="{ open: sidebarOpen }"
+      :channels="channelStore.channels"
+      :current-channel="channelStore.currentChannel"
+      :user="authStore.user"
+      @select-channel="selectChannel"
+      @logout="handleLogout"
+      @open-settings="openSettings"
+    />
+
+    <!-- Backdrop -->
+    <div v-if="sidebarOpen && !isDesktop" class="mobile-backdrop" @click="closeSidebar" />
   </div>
 </template>
 
@@ -184,88 +222,123 @@ function openSettings() {
 .main-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background-color: var(--absono-bg-base);
 }
 
+/* Desktop sidebar */
+.sidebar-desktop {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+/* Main content */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+
+  &.has-mobile-header {
+    padding-top: 48px;
+  }
+
+  &.has-mobile-nav {
+    padding-bottom: 56px;
+  }
 }
+
+/* Mobile header */
+.mobile-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0 var(--space-md);
+  background-color: var(--absono-surface-1);
+  border-bottom: 1px solid var(--absono-border);
+  z-index: 40;
+}
+
+.mobile-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--absono-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mobile bottom nav */
+.mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background-color: var(--absono-surface-1);
+  border-top: 1px solid var(--absono-border);
+  z-index: 40;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--absono-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+
+  &:hover,
+  &.active {
+    color: var(--absono-primary);
+  }
+}
+
+/* Mobile sidebar drawer */
+.sidebar-mobile {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 60;
+  transform: translateX(-100%);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4);
+
+  &.open {
+    transform: translateX(0);
+  }
+}
+
+/* Backdrop */
 .mobile-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 50;
-  background: rgba(0, 0, 0, 0.45);
-}
-
-.mobile-fab {
-  display: none;
-}
-
-@media (max-width: 1100px) {
-  .sb-users {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 60;
-    transform: translateX(105%);
-    transition: transform 0.22s ease;
-    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
-
-    &.open {
-      transform: translateX(0);
-    }
-  }
-
-  .mobile-fab.fab-right {
-    display: inline-flex;
-  }
-}
-
-@media (max-width: 820px) {
-  .sb-channels {
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    z-index: 60;
-    transform: translateX(-105%);
-    transition: transform 0.22s ease;
-    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4);
-
-    &.open {
-      transform: translateX(0);
-    }
-  }
-
-  .mobile-fab.fab-left {
-    display: inline-flex;
-  }
-}
-
-.mobile-fab {
-  position: fixed;
-  bottom: 14px;
-  width: 46px;
-  height: 46px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 1px solid var(--absono-border);
-  background-color: var(--absono-surface-2);
-  color: var(--absono-text);
-  font-size: 20px;
-  cursor: pointer;
   z-index: 55;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.5);
+  animation: fade-in 0.15s ease;
+}
 
-  &.fab-left { left: 14px; }
-  &.fab-right { right: 14px; }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>
