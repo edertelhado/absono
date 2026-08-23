@@ -615,9 +615,9 @@ async function toggleFullscreen() {
             <span class="toggle-label">Compartilhar áudio do sistema</span>
           </label>
           <div class="setting-hint">
-            Captura o áudio reproduzido no seu computador (Chrome/Edge). Marque "Compartilhar áudio" no diálogo do navegador.
-            ⚠️ O áudio do sistema inclui a própria chamada — quem assiste pode se escutar em eco; há um botão de alto-falante
-            no canto do compartilhamento para silenciar só esse áudio.
+            Captura o áudio reproduzido no seu computador. No Chrome 141+ o áudio da própria chamada já é excluído
+            automaticamente (sem eco). Em versões antigas ou no app desktop, quem assiste pode se escutar em eco —
+            há um botão de alto-falante no canto do compartilhamento para silenciar só esse áudio.
           </div>
         </div>
 

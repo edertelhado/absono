@@ -490,6 +490,10 @@ export const useVoiceStore = defineStore('voice', () => {
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
+          // Chrome 141+: exclui o áudio da PRÓPRIA chamada (renderizado
+          // por esta aba) do loopback do sistema — elimina o eco para
+          // quem assiste. Browsers antigos ignoram a constraint.
+          restrictOwnAudio: true,
         }
       }
 
