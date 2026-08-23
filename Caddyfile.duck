@@ -23,5 +23,17 @@
 		dns duckdns {$DUCKDNS_TOKEN}
 		resolvers 1.1.1.1 8.8.8.8
 	}
+
+	header Access-Control-Allow-Origin "*"
+	header Access-Control-Allow-Methods "GET, PUT, HEAD, OPTIONS"
+	header Access-Control-Allow-Headers "*"
+	header Access-Control-Expose-Headers "ETag, Content-Length, Content-Range"
+
+	# Garante que OPTIONS retorna 200 com os headers corretos
+	@options method OPTIONS
+	handle @options {
+	 respond 204
+	}
+
 	reverse_proxy garage:3902
 }

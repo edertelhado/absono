@@ -176,9 +176,12 @@ function selectChannel(channel: { id: string }) {
 
     <!-- Main content -->
     <div class="main-content" :class="{ 'has-mobile-header': !isDesktop, 'has-mobile-nav': !isDesktop }">
-      <ChatContent v-if="['TEXT', 'DIRECT'].includes((channelStore.currentChannel?.type ?? 'TEXT'))" />
-      <CallPanel v-else-if="isVoiceChannel" />
-      <VoiceStatusBar />
+      <router-view v-if="route.name === 'settings'" />
+      <template v-else>
+        <ChatContent v-if="['TEXT', 'DIRECT'].includes((channelStore.currentChannel?.type ?? 'TEXT'))" />
+        <CallPanel v-else-if="isVoiceChannel" />
+        <VoiceStatusBar />
+      </template>
     </div>
 
     <!-- Mobile bottom nav -->
