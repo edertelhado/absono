@@ -37,6 +37,10 @@ class VoiceStateService {
 
     // roomName -> (identity -> estado do participante)
     private final Map<String, Map<String, Map<String, Object>>> rooms = new ConcurrentHashMap<>()
+
+    // Última sala onde cada identidade fez join — resolve conflitos da
+    // reconciliação quando o LiveKit ainda reporta a sessão antiga
+    private final Map<String, String> lastJoinedRoom = new ConcurrentHashMap<>()
     private volatile List<Map> snapshot = []
 
     VoiceStateService(SimpMessagingTemplate messagingTemplate) {
@@ -53,6 +57,7 @@ class VoiceStateService {
         if (!roomName?.startsWith(CHANNEL_PREFIX) || !identity) return
         def room = rooms.computeIfAbsent(roomName) { new ConcurrentHashMap<>() }
         def existing = room.get(identity)
+        boolean changed = false
         if (existing == null) {
             room.put(identity, [
                 userId      : identity,
@@ -60,11 +65,20 @@ class VoiceStateService {
                 micMuted    : true,
                 cameraOn    : false,
             ])
-            broadcastIfChanged()
+            changed = true
         } else if ((name ?: identity) != existing.displayName) {
             existing.displayName = name ?: identity
-            broadcastIfChanged()
+            changed = true
         }
+        // Invariante: um usuario só pode estar em UMA sala. Na troca de canal
+        // o LiveKit pode reportar a sessao antiga por alguns instantes.
+        lastJoinedRoom[identity] = roomName
+        def staleRooms = rooms.keySet().findAll { it != roomName && rooms[it]?.containsKey(identity) }
+        for (String rn : staleRooms) {
+            if (rooms[rn].remove(identity) != null) changed = true
+            if (rooms[rn].isEmpty()) rooms.remove(rn)
+        }
+        if (changed) broadcastIfChanged()
     }
 
     synchronized void onParticipantLeft(String roomName, String identity) {
@@ -142,6 +156,24 @@ class VoiceStateService {
             }
             novo[room.name] = participants
         }
+
+        // Invariante single-room: se o LiveKit ainda reportar a identidade em
+        // mais de uma sala (janela de troca), mantém apenas a última conhecida
+        def byIdentity = novo.values().collectMany { it.keySet() }.toSet()
+        for (String identity in byIdentity) {
+            def presentIn = novo.findAll { it.value.containsKey(identity) }.keySet()
+            if (presentIn.size() > 1) {
+                String keep = lastJoinedRoom[identity]
+                if (!keep || !presentIn.contains(keep)) keep = presentIn.first()
+                presentIn.each { rn ->
+                    if (rn != keep) novo[rn].remove(identity)
+                }
+                lastJoinedRoom[identity] = keep
+            } else if (presentIn.size() == 1) {
+                lastJoinedRoom[identity] = presentIn.first()
+            }
+        }
+        lastJoinedRoom.keySet().retainAll(byIdentity)
 
         rooms.clear()
         rooms.putAll(novo)

@@ -14,7 +14,11 @@ export const useVoiceStateStore = defineStore('voiceState', () => {
 
   function applySnapshot(participants: VoiceParticipant[]) {
     const next: Record<string, VoiceParticipant[]> = {}
+    const seen = new Set<string>()
     for (const p of participants) {
+      // Invariante: um usuário só aparece em uma sala; ignora duplicados
+      if (seen.has(p.userId)) continue
+      seen.add(p.userId)
       if (!next[p.channelId]) next[p.channelId] = []
       next[p.channelId].push(p)
     }
