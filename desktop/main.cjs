@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, shell, session, desktopCapturer, ipcMain } = require('electron')
+const { app, BrowserWindow, Tray, Menu, shell, session, desktopCapturer, ipcMain, clipboard } = require('electron')
 const path = require('path')
 
 const fs = require('fs')
@@ -198,6 +198,7 @@ function configureMediaAndCertificates() {
     'notifications',
     'fullscreen',
     'pointerLock',
+    'clipboard-sanitized-write', // navigator.clipboard.writeText
   ])
 
   ses.setPermissionRequestHandler((_webContents, permission, callback) => {
@@ -258,7 +259,15 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(__dirname, 'preload.cjs'),
     },
+  })
+
+  // navigator.clipboard é instável no Electron (foco/permissão) —
+  // o renderer usa window.absonoDesktop.copyText quando disponível
+  ipcMain.handle('clipboard-write', (_event, text) => {
+    clipboard.writeText(String(text ?? ''))
+    return true
   })
 
   // empacotado sem servidor definido: página explicativa em vez de tela branca

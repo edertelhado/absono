@@ -9,6 +9,7 @@ import type { Invite } from '@/services/invite'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import { getAvatarUrl } from '@/utils'
+import { copyToClipboard } from '@/utils/clipboard'
 import type { UserRole } from '@/types'
 import {
   DialogRoot,
@@ -113,9 +114,13 @@ async function deleteInvite(id: string) {
   }
 }
 
-function copyInviteLink(link: string) {
-  navigator.clipboard.writeText(link)
-  toast.success('Link copiado para a area de transferencia')
+async function copyInviteLink(link: string) {
+  try {
+    await copyToClipboard(link)
+    toast.success('Link copiado para a area de transferencia')
+  } catch {
+    toast.error('Não foi possível copiar o link')
+  }
 }
 
 function isInviteExpired(expiresAt: string): boolean {

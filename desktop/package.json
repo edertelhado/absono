@@ -22,7 +22,8 @@
     },
     "files": [
       "main.cjs",
-      "picker-preload.cjs"
+      "picker-preload.cjs",
+      "preload.cjs"
     ],
     "linux": {
       "target": [

@@ -7,6 +7,7 @@ import { usePresenceStore } from '@/stores/usePresenceStore'
 import { useUnreadStore } from '@/stores/useUnreadStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { getAvatarUrl } from '@/utils'
+import { copyToClipboard } from '@/utils/clipboard'
 import { useToast } from '@/composables/useToast'
 import { useConfirm } from '@/composables/useConfirm'
 import {
@@ -99,7 +100,7 @@ async function generateInvite() {
   try {
     const invite = await inviteService.createInvite(10, 1440)
     const link = `${window.location.origin}/register?invite=${invite.code}`
-    await navigator.clipboard.writeText(link)
+    await copyToClipboard(link)
     toast.success('Link copiado para a área de transferência!')
   } catch (e: any) {
     toast.error(e.response?.data?.message || 'Erro ao gerar convite')
