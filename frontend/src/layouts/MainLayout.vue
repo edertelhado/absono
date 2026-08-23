@@ -324,14 +324,16 @@ function selectChannel(channel: { id: string }) {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 280px;
+  width: 280px !important;
   z-index: 60;
-  transform: translateX(-100%);
+  transform: translateX(-110%);
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 8px 0 24px rgba(0, 0, 0, 0.4);
+  visibility: hidden;
 
   &.open {
     transform: translateX(0);
+    visibility: visible;
   }
 }
 
