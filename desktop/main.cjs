@@ -13,10 +13,16 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('enable-features', 'WebRTCPipeWireCapturer')
   // Artefatos de composição no X11 (cantos piscando, janela "furada"
-  // mostrando o wallpaper) em Cinnamon/Muffin e outros WMs.
-  // Desligue com ABSONO_GPU_COMPOSITING=1 se preferir arriscar artefatos
-  // em troca de mais performance.
-  if (process.env.ABSONO_GPU_COMPOSITING !== '1') {
+  // mostrando o wallpaper) — comum em NVIDIA + Cinnamon/Muffin porque o
+  // Chromium usa client-side decorations e o damage tracking falha.
+  //
+  // Níveis de workaround:
+  //   padrão                      -> disable-gpu-compositing
+  //   ABSONO_GPU_COMPOSITING=1    -> mantém compositing por GPU
+  //   ABSONO_DISABLE_GPU=1        -> desliga a GPU do Chromium inteira
+  if (process.env.ABSONO_DISABLE_GPU === '1') {
+    app.commandLine.appendSwitch('disable-gpu')
+  } else if (process.env.ABSONO_GPU_COMPOSITING !== '1') {
     app.commandLine.appendSwitch('disable-gpu-compositing')
   }
 }
