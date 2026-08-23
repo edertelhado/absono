@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { Channel, VoiceParticipant } from '@/types'
+import type { Channel, VoiceParticipant, UserStatus } from '@/types'
 import { useChannelStore } from '@/stores/useChannelStore'
 import { useVoiceStateStore } from '@/stores/useVoiceStateStore'
 import { usePresenceStore } from '@/stores/usePresenceStore'
 import { useUnreadStore } from '@/stores/useUnreadStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 import { getAvatarUrl } from '@/utils'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { ArrowDown, Plus, Setting, Mute, VideoCamera, SwitchButton } from '@element-plus/icons-vue'
+import { ArrowDown, Plus, Setting, Mute, VideoCamera, SwitchButton, Link } from '@element-plus/icons-vue'
 import ChannelPermissionsDialog from '@/components/ChannelPermissionsDialog.vue'
+import { inviteService } from '@/services/invite'
 
 const props = defineProps<{
   channels: Channel[]
@@ -26,6 +28,56 @@ const channelStore = useChannelStore()
 const voiceStateStore = useVoiceStateStore()
 const presenceStore = usePresenceStore()
 const unreadStore = useUnreadStore()
+const authStore = useAuthStore()
+
+const STATUS_LABELS: Record<UserStatus, string> = {
+  ONLINE: 'Online',
+  AWAY: 'Ausente',
+  DO_NOT_DISTURB: 'Não perturbar',
+  INVISIBLE: 'Invisível',
+  OFFLINE: 'Offline',
+}
+
+function myEffectiveStatus(): UserStatus {
+  const u = authStore.user
+  if (!u) return 'OFFLINE'
+  const live = presenceStore.getStatus(u.id)
+  if (live && live !== 'OFFLINE') return live
+  return (u.status ?? 'OFFLINE') as UserStatus
+}
+
+function myStatusLabel(): string {
+  return STATUS_LABELS[myEffectiveStatus()] ?? 'Online'
+}
+
+function myStatusClass(): string {
+  return `status-${myEffectiveStatus().toLowerCase()}`
+}
+
+async function setStatus(status: UserStatus) {
+  const u = authStore.user
+  if (!u || status === (u.status ?? 'ONLINE')) return
+  try {
+    await authStore.updateStatus(status)
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || 'Erro ao mudar status')
+  }
+}
+
+const inviteLoading = ref(false)
+async function generateInvite() {
+  inviteLoading.value = true
+  try {
+    const invite = await inviteService.createInvite(10, 1440)
+    const link = `${window.location.origin}/register?invite=${invite.code}`
+    await navigator.clipboard.writeText(link)
+    ElMessage.success('Link copiado para a área de transferência!')
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || 'Erro ao gerar convite')
+  } finally {
+    inviteLoading.value = false
+  }
+}
 
 function unreadLabel(channelId: string): string | null {
   const n = unreadStore.counts[channelId]
@@ -121,7 +173,19 @@ function participantName(p: VoiceParticipant): string {
 <template>
   <aside class="channel-sidebar">
     <div class="sidebar-header">
-      <h2 class="app-title">Ábsono</h2>
+      <div class="header-left">
+        <svg class="app-logo" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        <h2 class="app-title">Ábsono</h2>
+      </div>
+      <button
+        v-if="authStore.user?.role === 'ADMIN'"
+        class="invite-btn"
+        title="Gerar link de convite"
+        :disabled="inviteLoading"
+        @click="generateInvite"
+      >
+        <el-icon><Link /></el-icon>
+      </button>
     </div>
 
     <div class="sidebar-content">
@@ -234,19 +298,34 @@ function participantName(p: VoiceParticipant): string {
     </div>
 
     <div class="sidebar-footer">
-      <div class="user-info" @click="emit('openSettings')">
-        <div class="user-avatar-wrapper">
-          <el-avatar :size="32" :src="getAvatarUrl(user?.avatarUrl, user?.username || '')" />
-          <span class="status-dot online" />
+      <el-dropdown trigger="click" @command="(cmd: any) => setStatus(cmd as UserStatus)">
+        <div class="user-info">
+          <div class="user-avatar-wrapper">
+            <el-avatar :size="32" :src="getAvatarUrl(user?.avatarUrl, user?.username || '')" />
+            <span class="status-dot" :class="myStatusClass()" />
+          </div>
+          <div class="user-details">
+            <span class="user-display-name">{{ user?.displayName || user?.username }}</span>
+            <span class="user-status-text" :class="myStatusClass()">{{ myStatusLabel() }}</span>
+          </div>
         </div>
-        <div class="user-details">
-          <span class="user-display-name">{{ user?.displayName || user?.username }}</span>
-          <span class="user-status-text">Online</span>
-        </div>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="ONLINE">🟢 Online</el-dropdown-item>
+            <el-dropdown-item command="AWAY">🟡 Ausente</el-dropdown-item>
+            <el-dropdown-item command="DO_NOT_DISTURB">🔴 Não perturbe</el-dropdown-item>
+            <el-dropdown-item command="INVISIBLE">⚫ Invisível</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+      <div class="footer-actions">
+        <el-button text circle class="settings-btn" title="Configurações" @click="emit('openSettings')">
+          <el-icon :size="16"><Setting /></el-icon>
+        </el-button>
+        <el-button text circle class="logout-btn" @click="emit('logout')">
+          <el-icon><SwitchButton /></el-icon>
+        </el-button>
       </div>
-      <el-button text circle class="logout-btn" @click="emit('logout')">
-        <el-icon><SwitchButton /></el-icon>
-      </el-button>
     </div>
   </aside>
 
@@ -294,16 +373,51 @@ function participantName(p: VoiceParticipant): string {
 }
 
 .sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--absono-border);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.app-logo {
+  width: 22px;
+  height: 22px;
+  color: var(--absono-primary);
+  flex-shrink: 0;
+}
+
 .app-title {
   font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--absono-text);
+}
+
+.invite-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--absono-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+
+  &:hover {
+    background-color: var(--absono-hover);
+    color: var(--absono-primary);
+  }
 }
 
 .sidebar-content {
@@ -347,7 +461,7 @@ function participantName(p: VoiceParticipant): string {
 
 .section-title {
   flex: 1;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -429,7 +543,7 @@ function participantName(p: VoiceParticipant): string {
 }
 
 .channel-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -438,8 +552,8 @@ function participantName(p: VoiceParticipant): string {
 }
 
 .dm-avatar {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   flex-shrink: 0;
   object-fit: cover;
@@ -521,7 +635,7 @@ function participantName(p: VoiceParticipant): string {
 }
 
 .participant-name {
-  font-size: 12px;
+  font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -557,6 +671,7 @@ function participantName(p: VoiceParticipant): string {
   padding: var(--space-xs);
   border-radius: var(--radius-md);
   transition: background-color 0.12s ease;
+  min-width: 0;
 
   &:hover {
     background-color: var(--absono-hover);
@@ -565,6 +680,7 @@ function participantName(p: VoiceParticipant): string {
 
 .user-avatar-wrapper {
   position: relative;
+  flex-shrink: 0;
 }
 
 .status-dot {
@@ -576,8 +692,21 @@ function participantName(p: VoiceParticipant): string {
   border-radius: 50%;
   border: 2px solid var(--absono-bg-base);
 
-  &.online {
+  &.status-online, &.online {
     background-color: var(--absono-online);
+  }
+
+  &.status-away {
+    background-color: var(--absono-away);
+  }
+
+  &.status-do_not_disturb {
+    background-color: var(--absono-dnd);
+  }
+
+  &.status-invisible,
+  &.status-offline {
+    background-color: var(--absono-offline);
   }
 }
 
@@ -589,17 +718,48 @@ function participantName(p: VoiceParticipant): string {
 
 .user-display-name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--absono-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 140px;
+  max-width: 130px;
 }
 
 .user-status-text {
   font-size: 11px;
-  color: var(--absono-online);
+
+  &.status-online, &.online {
+    color: var(--absono-online);
+  }
+
+  &.status-away {
+    color: var(--absono-away);
+  }
+
+  &.status-do_not_disturb {
+    color: var(--absono-dnd);
+  }
+
+  &.status-invisible,
+  &.status-offline {
+    color: var(--absono-text-muted);
+  }
+}
+
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.settings-btn {
+  color: var(--absono-text-secondary) !important;
+  transition: color 0.12s ease !important;
+
+  &:hover {
+    color: var(--absono-text) !important;
+  }
 }
 
 .logout-btn {

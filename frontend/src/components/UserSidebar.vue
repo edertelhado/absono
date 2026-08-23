@@ -187,22 +187,11 @@ function myStatusLabel(): string {
     </div>
 
     <div class="sidebar-footer" v-if="me">
-      <el-dropdown trigger="click" @command="(cmd: any) => setStatus(cmd as UserStatus)">
-        <button class="me-chip" title="Mudar status">
-          <span class="status-dot" :class="statusClass(me)"></span>
-          <span class="me-name">{{ me.displayName }}</span>
-          <span class="me-status">{{ myStatusLabel() }}</span>
-          <el-icon class="me-caret"><ArrowDown /></el-icon>
-        </button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="ONLINE">🟢 Online</el-dropdown-item>
-            <el-dropdown-item command="AWAY">🟡 Ausente</el-dropdown-item>
-            <el-dropdown-item command="DO_NOT_DISTURB">🔴 Não perturbe</el-dropdown-item>
-            <el-dropdown-item command="INVISIBLE">⚫ Invisível</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
+      <div class="me-chip">
+        <span class="status-dot" :class="statusClass(me)"></span>
+        <span class="me-name">{{ me.displayName }}</span>
+        <span class="me-status">{{ myStatusLabel() }}</span>
+      </div>
     </div>
   </aside>
 </template>
@@ -223,7 +212,7 @@ function myStatusLabel(): string {
 
 .section-title {
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--absono-text-muted);
@@ -238,7 +227,7 @@ function myStatusLabel(): string {
 
 .list-group-title {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -376,7 +365,7 @@ function myStatusLabel(): string {
 }
 
 .user-status {
-  font-size: 11px;
+  font-size: 12px;
 
   &.status-online {
     color: var(--absono-online);
@@ -423,7 +412,7 @@ function myStatusLabel(): string {
 }
 
 .me-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--absono-text);
   white-space: nowrap;
@@ -432,7 +421,7 @@ function myStatusLabel(): string {
 }
 
 .me-status {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--absono-text-muted);
   margin-left: auto;
 }
