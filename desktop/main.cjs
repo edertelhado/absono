@@ -95,9 +95,9 @@ function buildPickerHtml(sources) {
     const thumb = s.thumbnail && !s.thumbnail.isEmpty() ? s.thumbnail.toDataURL() : ''
     const icon = s.appIcon ? s.appIcon.toDataURL() : ''
     const name = escapeHtml(s.name || s.id)
-    return `<button class="item" data-id="${escapeHtml(s.id)}">
+    return `<button class="item" data-id="${escapeHtml(s.id)}" title="${name}">
       <img class="thumb" src="${thumb}" alt="" />
-      <span class="label">${icon ? `<img class="icon" src="${icon}" alt="" />` : ''}${name}</span>
+      <span class="label">${icon ? `<img class="icon" src="${icon}" alt="" />` : ''}<span class="name">${name}</span></span>
     </button>`
   }).join('')
 
@@ -105,10 +105,11 @@ function buildPickerHtml(sources) {
     body{font-family:system-ui,sans-serif;background:#0f1115;color:#e6e8ee;margin:0;display:flex;flex-direction:column;height:100vh;user-select:none}
     h2{margin:14px 16px;font-size:15px;font-weight:600}
     .grid{flex:1;overflow:auto;padding:0 16px 8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;align-content:start}
-    .item{background:#1a1d24;border:1px solid #2a2e38;border-radius:10px;padding:8px;cursor:pointer;text-align:left;color:inherit;display:flex;flex-direction:column}
+    .item{background:#1a1d24;border:1px solid #2a2e38;border-radius:10px;padding:8px;cursor:pointer;text-align:left;color:inherit;display:flex;flex-direction:column;min-width:0;overflow:hidden}
     .item:hover{border-color:#3b82f6;background:#20242d}
     .thumb{width:100%;height:96px;object-fit:contain;background:#000;border-radius:6px}
-    .label{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .label{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;min-width:0}
+    .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .icon{width:14px;height:14px;flex-shrink:0}
     footer{padding:10px 16px;border-top:1px solid #2a2e38;display:flex;justify-content:flex-end}
     button.cancel{background:#26272c;color:#e6e8ee;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px}
