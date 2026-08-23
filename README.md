@@ -73,26 +73,32 @@ Ou utilize o Flyway que está configurado no Spring Boot (executa automaticament
 
 ### 4. Configurar Garage
 
-O Garage exige inicialização do cluster na primeira execução:
+O container do Garage sobe sozinho, mas nasce **vazio** (sem layout, chave ou
+bucket). O bootstrap é feito pelo script idempotente — pode rodar quantas vezes
+quiser:
 
 ```bash
-# 1. Obter o ID do nó e atribuir capacidade ao layout
-NODE_ID=$(podman exec absono-garage /garage status | grep -oP '^[0-9a-f]{16}' | head -1)
-podman exec absono-garage /garage layout assign -z dc1 -c 1G "$NODE_ID"
-podman exec absono-garage /garage layout apply --version 1
-
-# 2. Criar bucket
-podman exec absono-garage /garage bucket create absono
-
-# 3. Importar chave com as credenciais do .env
-podman exec absono-garage /garage key import --yes garage_access_key garage_secret_key -n absono-key
-
-# 4. Autorizar a chave no bucket
-podman exec absono-garage /garage bucket allow absono --read --write --owner --key garage_access_key
+./scripts/init-garage.sh
 ```
 
-> Na VPS, o `./scripts/init-garage.sh` faz os passos 2–4 automaticamente
-> (o layout precisa ser atribuído uma vez, como acima).
+O script faz, na ordem: layout assign + apply do node único → importa a chave
+do `.env` → cria o bucket → autoriza a chave → remove CORS do bucket
+(o CORS de upload presignado fica no Caddy).
+
+> ⚠️ Só é obrigatório na **primeira instalação** ou se o volume `garage_data`
+> for perdido. Se o backend responder `403: No such key` nos uploads, rode-o
+> novamente.
+
+Sintaxe manual equivalente (Garage v2), se preferir:
+
+```bash
+NODE_ID=$(docker exec absono-garage /garage -c /etc/garage.toml status | grep -oE '\b[0-9a-f]{16}\b' | head -1)
+docker exec absono-garage /garage -c /etc/garage.toml layout assign -z dc1 -c 1G "$NODE_ID"
+docker exec absono-garage /garage -c /etc/garage.toml layout apply --version 1
+docker exec absono-garage /garage -c /etc/garage.toml bucket create absono
+docker exec absono-garage /garage -c /etc/garage.toml key import --yes garage_access_key garage_secret_key
+docker exec absono-garage /garage -c /etc/garage.toml bucket allow --read --write --owner --key garage_access_key absono
+```
 
 ### 5. Executar o Backend
 
@@ -251,7 +257,12 @@ O compose falha rápido se `PUBLIC_APP_DOMAIN`, `PUBLIC_S3_DOMAIN` ou
 ./scripts/init-garage.sh
 ```
 
-O script importa a chave do `.env` e cria o bucket, de forma idempotente.
+O container do Garage sobe pelo compose, mas nasce sem layout/chave/bucket —
+o script faz esse bootstrap completo de forma idempotente.
+
+> ⚠️ Se um dia os uploads falharem com `403: No such key`, é sinal de que a
+> metadata do Garage foi perdida (ex.: volume removido). Basta rodar o script
+> novamente. Arquivos enviados antes da perda não são recuperáveis.
 
 ### 4. Firewall da VPS
 
