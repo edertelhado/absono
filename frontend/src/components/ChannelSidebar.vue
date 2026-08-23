@@ -178,7 +178,7 @@ function participantName(p: VoiceParticipant): string {
         <h2 class="app-title">Ábsono</h2>
       </div>
       <button
-        v-if="authStore.user?.role === 'ADMIN'"
+        v-if="user?.role === 'ADMIN'"
         class="invite-btn"
         title="Gerar link de convite"
         :disabled="inviteLoading"
@@ -319,12 +319,12 @@ function participantName(p: VoiceParticipant): string {
         </template>
       </el-dropdown>
       <div class="footer-actions">
-        <el-button text circle class="settings-btn" title="Configurações" @click="emit('openSettings')">
+        <button class="icon-btn settings-btn" title="Configurações" @click="emit('openSettings')">
           <el-icon :size="16"><Setting /></el-icon>
-        </el-button>
-        <el-button text circle class="logout-btn" @click="emit('logout')">
-          <el-icon><SwitchButton /></el-icon>
-        </el-button>
+        </button>
+        <button class="icon-btn logout-btn" title="Sair" @click="emit('logout')">
+          <el-icon :size="16"><SwitchButton /></el-icon>
+        </button>
       </div>
     </div>
   </aside>
@@ -753,21 +753,26 @@ function participantName(p: VoiceParticipant): string {
   gap: 2px;
 }
 
-.settings-btn {
-  color: var(--absono-text-secondary) !important;
-  transition: color 0.12s ease !important;
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--absono-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
 
   &:hover {
-    color: var(--absono-text) !important;
+    background-color: var(--absono-hover);
+    color: var(--absono-text);
   }
 }
 
-.logout-btn {
-  color: var(--absono-text-secondary) !important;
-  transition: color 0.12s ease !important;
-
-  &:hover {
-    color: var(--absono-dnd) !important;
-  }
+.logout-btn:hover {
+  color: var(--absono-dnd) !important;
 }
 </style>
