@@ -574,28 +574,24 @@ async function toggleFullscreen() {
         <DialogTitle class="dialog-title">Compartilhar Tela</DialogTitle>
         <div class="form-group">
           <label class="form-label">Resolução</label>
-          <div class="select-trigger w-full">
-            <select v-model="shareResolution">
-              <option
-                v-for="opt in RESOLUTION_OPTIONS"
-                :key="opt.value"
-                :value="opt.value"
-              >{{ opt.label }}</option>
-            </select>
-          </div>
+          <select v-model="shareResolution" class="input call-select">
+            <option
+              v-for="opt in RESOLUTION_OPTIONS"
+              :key="opt.value"
+              :value="opt.value"
+            >{{ opt.label }}</option>
+          </select>
         </div>
 
         <div class="form-group" style="margin-top: var(--space-md);">
           <label class="form-label">FPS</label>
-          <div class="select-trigger w-full">
-            <select v-model="shareFps">
-              <option
-                v-for="opt in FPS_OPTIONS"
-                :key="opt.value"
-                :value="opt.value"
-              >{{ opt.label }}</option>
-            </select>
-          </div>
+          <select v-model="shareFps" class="input call-select">
+            <option
+              v-for="opt in FPS_OPTIONS"
+              :key="opt.value"
+              :value="opt.value"
+            >{{ opt.label }}</option>
+          </select>
         </div>
 
         <div class="form-group" style="margin-top: var(--space-md);">
@@ -808,10 +804,8 @@ async function toggleFullscreen() {
   width: 160px;
   background: rgba(0, 0, 0, 0.6);
   border: none;
-
-  select {
-    color: #fff;
-  }
+  color: #fff;
+  color-scheme: dark;
 }
 
 .watchers-badge {
