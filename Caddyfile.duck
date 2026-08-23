@@ -24,17 +24,27 @@
 		resolvers 1.1.1.1 8.8.8.8
 	}
 
+	# CORS global - aplicado a todas as respostas
+	header {
+		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Methods "GET, PUT, POST, DELETE, HEAD, OPTIONS"
+		Access-Control-Allow-Headers "*"
+		Access-Control-Expose-Headers "ETag, Content-Length, Content-Range"
+		Access-Control-Max-Age "3600"
+	}
+
+	# Resposta para preflight (OPTIONS)
 	@preflight method OPTIONS
 	handle @preflight {
-		header Access-Control-Allow-Origin "*"
-		header Access-Control-Allow-Methods "GET, PUT, HEAD, OPTIONS"
-		header Access-Control-Allow-Headers "content-type"
-		header Access-Control-Max-Age "3600"
 		respond 204
 	}
 
-	header Access-Control-Allow-Origin "*"
-	header Access-Control-Expose-Headers "ETag, Content-Length, Content-Range"
-
-	reverse_proxy garage:3902
+	# Proxy para o Garage
+	reverse_proxy garage:3902 {
+		# Remove headers CORS do Garage para evitar duplicação
+		header_down -Access-Control-Allow-Origin
+		header_down -Access-Control-Allow-Methods
+		header_down -Access-Control-Allow-Headers
+		header_down -Access-Control-Expose-Headers
+	}
 }
