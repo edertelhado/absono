@@ -21,6 +21,33 @@ export const useVoiceStateStore = defineStore('voiceState', () => {
     participantsByChannel.value = next
   }
 
+  /** Patch otimista: remove o usuário de todos os canais na UI já,
+   *  antes do webhook do LiveKit chegar. O próximo snapshot corrige. */
+  function localLeave(userId: string) {
+    const next: Record<string, VoiceParticipant[]> = {}
+    for (const [cid, list] of Object.entries(participantsByChannel.value)) {
+      const filtered = list.filter(p => p.userId !== userId)
+      if (filtered.length) next[cid] = filtered
+    }
+    participantsByChannel.value = next
+  }
+
+  /** Patch otimista: adiciona o usuário num canal na UI imediatamente. */
+  function localJoin(userId: string, displayName: string, channelId: string) {
+    localLeave(userId)
+    const entry: VoiceParticipant = {
+      userId,
+      displayName,
+      channelId,
+      micMuted: false,
+      cameraOn: false,
+    }
+    participantsByChannel.value = {
+      ...participantsByChannel.value,
+      [channelId]: [...(participantsByChannel.value[channelId] || []), entry],
+    }
+  }
+
   async function init() {
     if (initialized) return
     initialized = true
@@ -39,5 +66,5 @@ export const useVoiceStateStore = defineStore('voiceState', () => {
     })
   }
 
-  return { participantsByChannel, totalConnected, init }
+  return { participantsByChannel, totalConnected, init, localLeave, localJoin }
 })

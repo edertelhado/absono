@@ -2,12 +2,16 @@ import { defineStore } from 'pinia'
 import { ref, shallowRef, computed, watch, markRaw } from 'vue'
 import type { RemoteParticipant, LocalParticipant, RemoteVideoTrack, LocalVideoTrack, LocalAudioTrack, RemoteAudioTrack } from 'livekit-client'
 import { Room, RoomEvent, Track, VideoQuality } from 'livekit-client'
-import { KrispNoiseFilter, isKrispNoiseFilterSupported } from '@livekit/krisp-noise-filter'
-import type { KrispNoiseFilterProcessor } from '@livekit/krisp-noise-filter'
 import { livekitService } from '@/services/livekit'
 import { getScreenShareEncodingParams } from '@/utils/livekit-presets'
 import type { ScreenResolution, ScreenFPS } from '@/utils/livekit-presets'
 import { sendNotification } from '@/services/notification'
+
+const audioCaptureDefaults = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+} as const
 
 export const useVoiceStore = defineStore('voice', () => {
   const room = shallowRef<Room | null>(null)
@@ -31,7 +35,6 @@ export const useVoiceStore = defineStore('voice', () => {
   const screenShareResolution = ref<'480p' | '720p' | '1080p' | '2k' | 'ultrawide'>('720p')
   const screenShareFPS = ref<ScreenFPS>(30)
 
-  const noiseSuppression = ref(false)
   const mediaToggling = ref(false)
 
   const audioDevices = ref<MediaDeviceInfo[]>([])
@@ -141,7 +144,6 @@ export const useVoiceStore = defineStore('voice', () => {
       selectedVideoInput.value = s.videoInput || ''
       if (s.shareResolution) screenShareResolution.value = s.shareResolution
       if (s.shareFps) screenShareFPS.value = s.shareFps
-      noiseSuppression.value = !!s.noiseSuppression
     } catch {
       // configurações corrompidas — segue com defaults
     }
@@ -150,7 +152,7 @@ export const useVoiceStore = defineStore('voice', () => {
   loadVoiceSettings()
 
   watch(
-    [selectedAudioInput, selectedAudioOutput, selectedVideoInput, screenShareResolution, screenShareFPS, noiseSuppression],
+    [selectedAudioInput, selectedAudioOutput, selectedVideoInput, screenShareResolution, screenShareFPS],
     () => {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({
         audioInput: selectedAudioInput.value,
@@ -158,7 +160,6 @@ export const useVoiceStore = defineStore('voice', () => {
         videoInput: selectedVideoInput.value,
         shareResolution: screenShareResolution.value,
         shareFps: screenShareFPS.value,
-        noiseSuppression: noiseSuppression.value,
       }))
     }
   )
@@ -233,8 +234,21 @@ export const useVoiceStore = defineStore('voice', () => {
   async function enumerateDevices() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices()
-      audioDevices.value = devices.filter(d => d.kind === 'audioinput' || d.kind === 'audiooutput')
-      videoDevices.value = devices.filter(d => d.kind === 'videoinput')
+      const mics = devices.filter(d => d.kind === 'audioinput')
+      const speakers = devices.filter(d => d.kind === 'audiooutput')
+      const cams = devices.filter(d => d.kind === 'videoinput')
+      audioDevices.value = [...mics, ...speakers]
+      videoDevices.value = cams
+
+      // Seleciona o primeiro dispositivo real quando não há escolha válida
+      // (deviceId vazio = sem permissão ainda; mantém o que já está salvo)
+      const pickDefault = (list: MediaDeviceInfo[], current: string) =>
+        list.some(d => d.deviceId && d.deviceId === current)
+          ? current
+          : (list.find(d => d.deviceId)?.deviceId || '')
+      selectedAudioInput.value = pickDefault(mics, selectedAudioInput.value)
+      selectedAudioOutput.value = pickDefault(speakers, selectedAudioOutput.value)
+      selectedVideoInput.value = pickDefault(cams, selectedVideoInput.value)
     } catch (e) {
       console.error('Erro ao listar dispositivos:', e)
     }
@@ -309,7 +323,7 @@ export const useVoiceStore = defineStore('voice', () => {
 
       lkRoom.on(RoomEvent.LocalTrackPublished, (_publication, participant) => {
         if (participant === lkRoom.localParticipant) {
-          void applyNoiseSuppressionIfEnabled()
+          // noop — hook para futuros pós-processamentos
         }
         touch()
       })
@@ -350,14 +364,24 @@ export const useVoiceStore = defineStore('voice', () => {
       room.value = markRaw(lkRoom)
       touch()
 
+      // Patch otimista na UI (sidebar) — webhook do servidor corrige depois
+      try {
+        const { useAuthStore } = await import('@/stores/useAuthStore')
+        const { useVoiceStateStore } = await import('@/stores/useVoiceStateStore')
+        const me = useAuthStore().user
+        if (me) {
+          useVoiceStateStore().localJoin(me.id, me.displayName || me.username, channelId)
+        }
+      } catch {}
+
       // Habilita o microfone na entrada — dispara o pedido de permissão
       // do navegador. Se negado/ausente, entra mudo sem quebrar a chamada.
       try {
-        await lkRoom.localParticipant.setMicrophoneEnabled(true, selectedAudioInput.value ? { deviceId: selectedAudioInput.value } : undefined)
+        await lkRoom.localParticipant.setMicrophoneEnabled(true, {
+          deviceId: selectedAudioInput.value || undefined,
+          ...audioCaptureDefaults,
+        })
         isMicrophoneEnabled.value = true
-        if (noiseSuppression.value) {
-          void applyNoiseSuppressionIfEnabled()
-        }
       } catch (e) {
         console.warn('Microfone não habilitado automaticamente:', (e as Error)?.message || e)
       }
@@ -376,6 +400,14 @@ export const useVoiceStore = defineStore('voice', () => {
 
   async function disconnect() {
     if (room.value) {
+      // Patch otimista na UI antes de derrubar a sessão
+      try {
+        const { useAuthStore } = await import('@/stores/useAuthStore')
+        const { useVoiceStateStore } = await import('@/stores/useVoiceStateStore')
+        const me = useAuthStore().user
+        if (me) useVoiceStateStore().localLeave(me.id)
+      } catch {}
+
       const lkRoom = room.value
       room.value = null
       await lkRoom.disconnect()
@@ -395,12 +427,12 @@ export const useVoiceStore = defineStore('voice', () => {
       const enabled = !isMicrophoneEnabled.value
       await lp.setMicrophoneEnabled(
         enabled,
-        selectedAudioInput.value ? { deviceId: selectedAudioInput.value } : undefined
+        {
+          deviceId: selectedAudioInput.value || undefined,
+          ...audioCaptureDefaults,
+        }
       )
       isMicrophoneEnabled.value = enabled
-      if (enabled && noiseSuppression.value) {
-        await applyNoiseSuppressionIfEnabled()
-      }
     } finally {
       mediaToggling.value = false
     }
@@ -603,41 +635,6 @@ export const useVoiceStore = defineStore('voice', () => {
     }
   }
 
-  async function applyNoiseSuppressionIfEnabled() {
-    if (!noiseSuppression.value) return
-    const lp = localParticipant.value
-    if (!lp || !isKrispNoiseFilterSupported()) return
-    const pub = lp.getTrackPublication(Track.Source.Microphone)
-    const track = pub?.audioTrack as LocalAudioTrack | undefined
-    if (!track) return
-    try {
-      let proc = (track as any).processor as KrispNoiseFilterProcessor | undefined
-      if (!proc || proc.name !== 'livekit-noise-filter') {
-        proc = KrispNoiseFilter()
-        await track.setProcessor(proc)
-      }
-      await proc.setEnabled(true)
-    } catch (e) {
-      console.warn('Não foi possível ativar a supressão de ruído:', e)
-    }
-  }
-
-  async function setNoiseSuppression(on: boolean) {
-    noiseSuppression.value = on
-    if (!on) {
-      const lp = localParticipant.value
-      const track = lp?.getTrackPublication(Track.Source.Microphone)?.audioTrack as LocalAudioTrack | undefined
-      const proc = (track as any)?.processor as KrispNoiseFilterProcessor | undefined
-      if (proc?.name === 'livekit-noise-filter') {
-        try {
-          await proc.setEnabled(false)
-        } catch {}
-      }
-      return
-    }
-    await applyNoiseSuppressionIfEnabled()
-  }
-
   function setScreenShareQuality(resolution: ScreenResolution, fps: ScreenFPS) {
     screenShareResolution.value = resolution
     screenShareFPS.value = fps
@@ -671,7 +668,6 @@ export const useVoiceStore = defineStore('voice', () => {
     selectedVideoInput,
     screenShareResolution,
     screenShareFPS,
-    noiseSuppression,
     mediaToggling,
     audioDevices,
     videoDevices,
@@ -692,6 +688,5 @@ export const useVoiceStore = defineStore('voice', () => {
     setAudioOutputDevice,
     setVideoInputDevice,
     setScreenShareQuality,
-    setNoiseSuppression,
   }
 })

@@ -528,56 +528,35 @@ async function toggleFullscreen() {
         <DialogTitle class="dialog-title">Configurações de Chamada</DialogTitle>
         <div class="form-group">
           <label class="form-label">Microfone</label>
-          <div class="select-trigger w-full">
-            <select v-model="voiceStore.selectedAudioInput">
-              <option
-                v-for="device in voiceStore.audioDevices.filter(d => d.kind === 'audioinput')"
-                :key="device.deviceId"
-                :value="device.deviceId"
-              >{{ device.label }}</option>
-            </select>
-          </div>
+          <select v-model="voiceStore.selectedAudioInput" class="input call-select">
+            <option
+              v-for="device in voiceStore.audioDevices.filter(d => d.kind === 'audioinput')"
+              :key="device.deviceId"
+              :value="device.deviceId"
+            >{{ device.label }}</option>
+          </select>
         </div>
 
         <div class="form-group" style="margin-top: var(--space-md);">
           <label class="form-label">Alto-falante</label>
-          <div class="select-trigger w-full">
-            <select v-model="voiceStore.selectedAudioOutput">
-              <option
-                v-for="device in voiceStore.audioDevices.filter(d => d.kind === 'audiooutput')"
-                :key="device.deviceId"
-                :value="device.deviceId"
-              >{{ device.label }}</option>
-            </select>
-          </div>
+          <select v-model="voiceStore.selectedAudioOutput" class="input call-select">
+            <option
+              v-for="device in voiceStore.audioDevices.filter(d => d.kind === 'audiooutput')"
+              :key="device.deviceId"
+              :value="device.deviceId"
+            >{{ device.label }}</option>
+          </select>
         </div>
 
         <div class="form-group" style="margin-top: var(--space-md);">
           <label class="form-label">Câmera</label>
-          <div class="select-trigger w-full">
-            <select v-model="voiceStore.selectedVideoInput">
-              <option
-                v-for="device in voiceStore.videoDevices"
-                :key="device.deviceId"
-                :value="device.deviceId"
-              >{{ device.label }}</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-top: var(--space-md);">
-          <label class="form-label">Áudio</label>
-          <label class="toggle-row">
-            <input
-              type="checkbox"
-              class="toggle-input"
-              :checked="voiceStore.noiseSuppression"
-              @change="(e: Event) => voiceStore.setNoiseSuppression((e.target as HTMLInputElement).checked)"
-            />
-            <span class="toggle-switch"></span>
-            <span class="toggle-label">Supressão de ruído (IA)</span>
-          </label>
-          <div class="setting-hint">Reduz ruído do ambiente no seu microfone (Krisp). Suporte no Chrome/Edge.</div>
+          <select v-model="voiceStore.selectedVideoInput" class="input call-select">
+            <option
+              v-for="device in voiceStore.videoDevices"
+              :key="device.deviceId"
+              :value="device.deviceId"
+            >{{ device.label }}</option>
+          </select>
         </div>
 
         <div class="dialog-footer">
@@ -642,6 +621,11 @@ async function toggleFullscreen() {
 </template>
 
 <style scoped lang="scss">
+.call-select {
+  width: 100%;
+  color-scheme: dark;
+}
+
 .call-panel {
   display: flex;
   flex-direction: column;
