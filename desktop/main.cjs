@@ -15,15 +15,11 @@ if (process.platform === 'linux') {
   // Artefatos de composição no X11 (cantos piscando, janela "furada"
   // mostrando o wallpaper) — comum em NVIDIA + Cinnamon/Muffin porque o
   // Chromium usa client-side decorations e o damage tracking falha.
-  //
-  // Níveis de workaround:
-  //   padrão                      -> disable-gpu-compositing
-  //   ABSONO_GPU_COMPOSITING=1    -> mantém compositing por GPU
-  //   ABSONO_DISABLE_GPU=1        -> desliga a GPU do Chromium inteira
-  if (process.env.ABSONO_DISABLE_GPU === '1') {
-    app.commandLine.appendSwitch('disable-gpu')
-  } else if (process.env.ABSONO_GPU_COMPOSITING !== '1') {
+  // Compositing por software + raster completo: custo baixo, ataca
+  // exatamente esse tipo de glitch. Reverte com ABSONO_GPU_COMPOSITING=1.
+  if (process.env.ABSONO_GPU_COMPOSITING !== '1') {
     app.commandLine.appendSwitch('disable-gpu-compositing')
+    app.commandLine.appendSwitch('disable-partial-raster')
   }
 }
 // Empacotado: extraResources copia build/icon.png para <resources>/icon.png
