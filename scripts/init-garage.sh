@@ -44,7 +44,7 @@ docker run --rm --network host \
   amazon/aws-cli:latest \
   --endpoint-url "http://localhost:${GARAGE_S3_PORT}" \
   s3api put-bucket-cors --bucket "$GARAGE_BUCKET" \
-  --cors-configuration '{"CORSRules":[{"AllowedHeaders":["*"],"AllowedMethods":["GET","PUT","HEAD"],"AllowedOrigins":["*"],"ExposeHeaders":["ETag"]}]}' \
+  --cors-configuration '{"CORSRules":[{"AllowedHeaders":["content-type","host"],"AllowedMethods":["GET","PUT","HEAD"],"AllowedOrigins":["*"],"ExposeHeaders":["ETag"]}]}' \
   || echo "AVISO: falha ao aplicar CORS — uploads diretos do navegador podem falhar"
 
 echo "==> Concluído. Resumo:"
