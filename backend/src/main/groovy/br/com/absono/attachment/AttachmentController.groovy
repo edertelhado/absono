@@ -5,6 +5,8 @@ import br.com.absono.common.ResourceNotFoundException
 import br.com.absono.common.Ulid
 import br.com.absono.message.MessageMapper
 import br.com.absono.message.MessageAttachment
+import br.com.absono.message.MessageService
+import br.com.absono.user.UserRole
 import br.com.absono.user.UserService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -19,13 +21,15 @@ class AttachmentController {
     private final S3Service s3Service
     private final MessageMapper messageMapper
     private final UserService userService
+    private final MessageService messageService
 
     private static final long MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 
-    AttachmentController(S3Service s3Service, MessageMapper messageMapper, UserService userService) {
+    AttachmentController(S3Service s3Service, MessageMapper messageMapper, UserService userService, MessageService messageService) {
         this.s3Service = s3Service
         this.messageMapper = messageMapper
         this.userService = userService
+        this.messageService = messageService
     }
 
     @PostMapping
@@ -86,6 +90,13 @@ class AttachmentController {
         def attachment = messageMapper.findAttachmentById(id)
         if (!attachment) {
             throw new ResourceNotFoundException('Anexo não encontrado')
+        }
+
+        def user = userService.getCurrentUser()
+        def message = messageService.getMessage(attachment.messageId)
+        boolean isAdmin = user.role == UserRole.ADMIN
+        if (!isAdmin && message.userId != user.id) {
+            throw new BusinessException('Você não tem permissão para excluir este anexo')
         }
 
         s3Service.deleteFile(attachment.s3Key)
