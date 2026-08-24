@@ -198,7 +198,11 @@ function registerIpcHandlers() {
 function registerSessionHandlers() {
   session.defaultSession.on('will-download', (_event, item) => {
     if (!item.getSavePath()) {
-      item.setSavePath(path.join(app.getPath('downloads'), item.getFilename()))
+      // item.getFilename() e controlado pelo servidor; path.join nao confina a
+      // ~/Downloads (um nome '../../.config/x' ou absoluto '/etc/x' escapa).
+      // path.basename descarta componentes de diretorio, mantendo so o nome.
+      const safeName = path.basename(String(item.getFilename() || 'download'))
+      item.setSavePath(path.join(app.getPath('downloads'), safeName))
     }
   })
 }
