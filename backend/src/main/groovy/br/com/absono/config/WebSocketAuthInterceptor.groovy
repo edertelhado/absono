@@ -1,6 +1,7 @@
 package br.com.absono.config
 
 import br.com.absono.auth.JwtUtil
+import br.com.absono.channel.ChannelPermissionService
 import org.springframework.context.annotation.Lazy
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
