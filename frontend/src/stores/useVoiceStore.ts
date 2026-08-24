@@ -20,6 +20,10 @@ export const useVoiceStore = defineStore('voice', () => {
   const reconnecting = ref(false)
   const currentRoomName = ref<string | null>(null)
   const joinedChannelId = ref<string | null>(null)
+  // Canal efetivamente desejado pelo usuário. Permite honrar trocas de canal
+  // solicitadas enquanto uma conexão ainda está em andamento (connect() só
+  // aceita uma conexão por vez).
+  let desiredChannelId: string | null = null
 
   const participants = shallowRef<RemoteParticipant[]>([])
   const localParticipant = shallowRef<LocalParticipant | null>(null)
@@ -271,7 +275,13 @@ export const useVoiceStore = defineStore('voice', () => {
   }
 
   async function connect(channelId: string) {
-    if (connecting.value) return
+    desiredChannelId = channelId
+    if (connecting.value) {
+      // Já há uma conexão em andamento: ela própria vai redirecionar para o
+      // canal desejado quando terminar (veja o bloco finally). Evita ignorar
+      // a troca de canal disparada durante o connecting.
+      return
+    }
     if (connected.value && joinedChannelId.value === channelId) return
     if (room.value) await disconnect()
 
@@ -412,6 +422,10 @@ export const useVoiceStore = defineStore('voice', () => {
       throw e
     } finally {
       connecting.value = false
+      // Se o usuário trocou de canal durante esta conexão, reconecta no desejado
+      if (desiredChannelId && desiredChannelId !== joinedChannelId.value) {
+        connect(desiredChannelId)
+      }
     }
   }
 
