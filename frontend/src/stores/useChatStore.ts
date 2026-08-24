@@ -41,10 +41,13 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function loadMessages() {
-    if (!currentChannelId.value || loading.value) return
+    const channelId = currentChannelId.value
+    if (!channelId || loading.value) return
     loading.value = true
     try {
-      const response = await messageService.getMessages(currentChannelId.value, 50, 0)
+      const response = await messageService.getMessages(channelId, 50, 0)
+      // Descarta se o usuário trocou de canal durante a requisição (race)
+      if (currentChannelId.value !== channelId) return
       messages.value = response.messages
       total.value = response.total
       hasMore.value = response.hasMore
@@ -54,10 +57,12 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function loadMoreMessages() {
-    if (!currentChannelId.value || loading.value || !hasMore.value) return
+    const channelId = currentChannelId.value
+    if (!channelId || loading.value || !hasMore.value) return
     loading.value = true
     try {
-      const response = await messageService.getMessages(currentChannelId.value, 50, messages.value.length)
+      const response = await messageService.getMessages(channelId, 50, messages.value.length)
+      if (currentChannelId.value !== channelId) return
       messages.value = [...response.messages, ...messages.value]
       total.value = response.total
       hasMore.value = response.hasMore
