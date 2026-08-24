@@ -12,6 +12,12 @@ class WebSocketService {
   connect() {
     if (this.connected) return
 
+    // Limpa inscrições obsoletas do cliente anterior. Sem isso, após uma
+    // queda/reconexão o mapa ainda guarda os objetos do cliente morto e
+    // doSubscribe() aborta (guard `subscriptions.has(topic)`), deixando o
+    // cliente "conectado" porém sem nenhuma inscrição ativa.
+    this.subscriptions.clear()
+
     const token = localStorage.getItem('absono_token')
     const socket = new SockJS('/ws')
     this.client = Stomp.over(socket)
@@ -27,6 +33,7 @@ class WebSocketService {
     }, (error) => {
       console.error('Erro WebSocket:', error)
       this.connected = false
+      this.subscriptions.clear()
       setTimeout(() => this.connect(), 5000)
     })
   }
