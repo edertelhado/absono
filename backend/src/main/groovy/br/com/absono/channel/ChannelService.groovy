@@ -28,7 +28,9 @@ class ChannelService {
                 def perms = permissionService.getEffectivePermissions(ch.id, userId)
                 perms.canRead
             } catch (Exception e) {
-                true
+                // Em caso de falha ao resolver permissão, nega a visibilidade
+                // (fail-closed) em vez de expor o canal indevidamente.
+                false
             }
         }
     }
