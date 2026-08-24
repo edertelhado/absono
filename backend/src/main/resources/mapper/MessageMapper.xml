@@ -96,7 +96,8 @@
     </delete>
 
     <select id="countByChannelId" resultType="int">
-        SELECT COUNT(*) FROM messages WHERE channel_id = #{channelId}
+        SELECT COUNT(*) FROM messages
+        WHERE channel_id = #{channelId} AND parent_message_id IS NULL
     </select>
 
     <insert id="insertAttachment">
