@@ -197,8 +197,14 @@ class VoiceStateService {
             }
         }
 
-        if (states != snapshot) {
-            snapshot = states
+        // ordena por canal/usuário para comparação estável (a iteração de
+        // ConcurrentHashMap não tem ordem determinística)
+        states.sort { a, b -> (a.channelId <=> b.channelId) ?: (a.userId <=> b.userId) }
+
+        // compara conteúdo, não referência (antes era `states != snapshot`,
+        // sempre verdadeiro, transmitindo a cada evento/reconcile)
+        if (states.toString() != snapshot.toString()) {
+            snapshot = new ArrayList(states)
             messagingTemplate.convertAndSend('/topic/voice-state', [
                 type: 'VOICE_STATE',
                 data: states
