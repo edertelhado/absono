@@ -28,9 +28,8 @@ async function doRefresh(): Promise<string | null> {
     localStorage.setItem('absono_token', data.accessToken)
     return data.accessToken
   } catch {
-    localStorage.removeItem('absono_token')
-    localStorage.removeItem('absono_refresh')
-    router.push('/login')
+    // Não limpa tokens nem redireciona aqui: o interceptor de resposta cuida
+    // do redirect para /login num único ponto (evita navegação duplicada).
     return null
   }
 }
