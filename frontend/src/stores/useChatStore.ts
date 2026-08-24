@@ -71,10 +71,24 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function sendMessage(content: string, replyToId?: string) {
+  async function sendMessage(content: string, replyToId?: string, parentMessageId?: string) {
     if (!currentChannelId.value) return
-    const message = await messageService.sendMessage(currentChannelId.value, content, replyToId)
-    // Will be added via WebSocket event
+    const channelId = currentChannelId.value
+    const message = await messageService.sendMessage(channelId, content, replyToId, parentMessageId)
+    if (!message) return message
+
+    if (parentMessageId) {
+      // resposta de thread: adiciona otimisticamente à thread aberta
+      if (threadParentId.value === parentMessageId &&
+          !threadMessages.value.some(m => m.id === message.id)) {
+        threadMessages.value.push(message)
+      }
+    } else if (currentChannelId.value === channelId &&
+               !messages.value.some(m => m.id === message.id)) {
+      // canal principal: adiciona otimisticamente. O echo via WebSocket é
+      // ignorado por já existir (dedup por id em handleSocketMessage).
+      messages.value.push(message)
+    }
     return message
   }
 
@@ -102,7 +116,7 @@ export const useChatStore = defineStore('chat', () => {
 
   async function sendThreadMessage(content: string) {
     if (!threadParentId.value || !currentChannelId.value) return
-    await messageService.sendMessage(currentChannelId.value, content, undefined, threadParentId.value)
+    await sendMessage(content, undefined, threadParentId.value)
   }
 
   async function toggleReaction(messageId: string, emoji: string, add: boolean) {
