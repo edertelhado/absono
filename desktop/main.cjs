@@ -296,9 +296,14 @@ function createWindow() {
   // sem diálogo. O handler will-download é registrado uma única vez em
   // registerSessionHandlers() (session.defaultSession compartilhada).
 
-  // Nunca navega para fora do servidor configurado — abre no navegador do sistema
+  // Nunca navega para fora do servidor configurado — abre no navegador do sistema.
+  // Compara a ORIGEM (scheme+host+port), nao apenas prefixo de string, para evitar
+  // bypass como "https://absono.duckdns.org:4432.attacker.com".
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (!SERVER_URL || url.startsWith(SERVER_URL)) return
+    if (!SERVER_URL) return
+    let target, origin
+    try { target = new URL(url); origin = new URL(SERVER_URL).origin } catch { return }
+    if (target.origin === origin) return
     event.preventDefault()
     shell.openExternal(url)
   })
