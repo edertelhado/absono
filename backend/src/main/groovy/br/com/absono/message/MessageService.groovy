@@ -100,6 +100,13 @@ class MessageService {
             }
         }
 
+        if (request.replyToId) {
+            def replyTo = messageMapper.findById(request.replyToId)
+            if (!replyTo || replyTo.channelId != request.channelId) {
+                throw new BusinessException('Mensagem respondida pertence a outro canal')
+            }
+        }
+
         String id = Ulid.generate()
 
         Message message = new Message(
