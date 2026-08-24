@@ -17,6 +17,11 @@
         FROM invites WHERE code = #{code}
     </select>
 
+    <select id="findById" resultMap="InviteResultMap">
+        SELECT id, code, created_by, max_uses, use_count, expires_at, created_at
+        FROM invites WHERE id = #{id}
+    </select>
+
     <insert id="insert">
         INSERT INTO invites (id, code, created_by, max_uses, expires_at)
         VALUES (#{id}, #{code}, #{createdBy}, #{maxUses}, #{expiresAt}::timestamp)
@@ -24,6 +29,11 @@
 
     <update id="incrementUseCount">
         UPDATE invites SET use_count = use_count + 1 WHERE code = #{code}
+    </update>
+
+    <update id="incrementUseCountConditional">
+        UPDATE invites SET use_count = use_count + 1
+        WHERE code = #{code} AND use_count &lt; max_uses AND expires_at &gt; NOW()
     </update>
 
     <select id="findByCreatedBy" resultMap="InviteResultMap">

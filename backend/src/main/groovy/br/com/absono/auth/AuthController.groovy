@@ -22,9 +22,8 @@ class AuthController {
 
     @PostMapping('/register')
     ResponseEntity<?> register(@RequestBody @Valid RegisterRequest request) {
-        inviteService.validateInvite(request.inviteCode)
         def response = authService.register(request)
-        inviteService.consumeInvite(request.inviteCode)
+        inviteService.validateAndConsumeInvite(request.inviteCode)
         ResponseEntity.status(HttpStatus.CREATED).body(response)
     }
 

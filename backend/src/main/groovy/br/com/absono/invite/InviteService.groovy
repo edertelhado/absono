@@ -60,6 +60,26 @@ class InviteService {
         inviteMapper.findByCreatedBy(userId)
     }
 
+    /**
+     * Valida e consome o convite em uma única operação atômica. O incremento é
+     * condicional (use_count < max_uses AND expires_at > NOW()) para evitar a
+     * corrida TOCTOU entre validar e consumir em registros concorrentes.
+     */
+    @Transactional
+    void validateAndConsumeInvite(String code) {
+        def invite = inviteMapper.findByCode(code)
+        if (!invite) {
+            throw new BusinessException('Convite invalido')
+        }
+        if (invite.expiresAt.isBefore(LocalDateTime.now())) {
+            throw new BusinessException('Este convite expirou')
+        }
+        int updated = inviteMapper.incrementUseCountConditional(code)
+        if (updated != 1) {
+            throw new BusinessException('Este convite já atingiu o limite de uso')
+        }
+    }
+
     @Transactional
     void deleteInvite(String id, String requesterId, boolean isAdmin) {
         def invite = inviteMapper.findById(id)
