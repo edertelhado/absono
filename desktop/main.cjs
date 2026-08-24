@@ -182,6 +182,16 @@ function openSharePicker(sources, callback) {
   pickerWindow.loadURL('data:text/html;charset=utf-8,' + buildPickerHtml(sources))
 }
 
+// ipcMain.handle só pode ser registrado uma vez por canal. Registrar dentro de
+// createWindow() quebra ao recriar a janela (app.on('activate'), toggleWindow),
+// pois Electron lança "Attempted to register a second handler".
+function registerIpcHandlers() {
+  ipcMain.handle('clipboard-write', (_event, text) => {
+    clipboard.writeText(String(text ?? ''))
+    return true
+  })
+}
+
 function configureMediaAndCertificates() {
   // Confia em qualquer certificado (auto-assinado, expirado, hostname inválido…)
   app.on('certificate-error', (event, _webContents, _url, _error, _certificate, callback) => {
@@ -264,11 +274,8 @@ function createWindow() {
   })
 
   // navigator.clipboard é instável no Electron (foco/permissão) —
-  // o renderer usa window.absonoDesktop.copyText quando disponível
-  ipcMain.handle('clipboard-write', (_event, text) => {
-    clipboard.writeText(String(text ?? ''))
-    return true
-  })
+  // o renderer usa window.absonoDesktop.copyText quando disponível.
+  // O handler é registrado uma única vez em registerIpcHandlers().
 
   // Downloads que eventualmente ocorram dentro do app vão para ~/Downloads
   // sem diálogo. Links de download do frontend abrem _blank e caem no
@@ -371,6 +378,7 @@ app.whenReady().then(() => {
   // Sem barra de menu padrão do Electron (File/Edit/View…)
   Menu.setApplicationMenu(null)
 
+  registerIpcHandlers()
   configureMediaAndCertificates()
   createWindow()
   createTray()
