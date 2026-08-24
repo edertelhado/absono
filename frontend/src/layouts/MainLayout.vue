@@ -147,6 +147,7 @@ onBeforeUnmount(() => {
 async function handleLogout() {
   webSocketService.disconnect()
   await voiceStore.disconnect()
+  presenceStore.stop()
   await authStore.logout()
   router.push('/login')
 }

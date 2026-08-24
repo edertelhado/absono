@@ -51,6 +51,8 @@ export const usePresenceStore = defineStore('presence', () => {
     }
   }
 
+  let pollTimer: ReturnType<typeof setInterval> | null = null
+
   async function init() {
     if (initialized) return
     initialized = true
@@ -58,7 +60,7 @@ export const usePresenceStore = defineStore('presence', () => {
     await fetchUsers()
 
     // Rede de segurança: lista pode ficar defasada (usuário novo, etc.)
-    setInterval(() => { fetchUsers() }, 60_000)
+    pollTimer = setInterval(() => { fetchUsers() }, 60_000)
 
     webSocketService.subscribeToPresence((data) => {
       if (data?.type === 'STATUS_CHANGE' && data.data?.userId) {
@@ -67,5 +69,15 @@ export const usePresenceStore = defineStore('presence', () => {
     })
   }
 
-  return { users, statuses, loading, getStatus, isOnline, applyStatus, fetchUsers, init }
+  function stop() {
+    if (pollTimer) {
+      clearInterval(pollTimer)
+      pollTimer = null
+    }
+    initialized = false
+    users.value = []
+    statuses.value = {}
+  }
+
+  return { users, statuses, loading, getStatus, isOnline, applyStatus, fetchUsers, init, stop }
 })
