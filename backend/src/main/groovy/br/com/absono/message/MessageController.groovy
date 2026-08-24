@@ -106,7 +106,16 @@ class MessageController {
             def preview = message.content.length() > 80 ? message.content.substring(0, 80) + '...' : message.content
 
             userService.getAllUsers().each { recipient ->
-                if (recipient.id != authorId && recipient.status?.toString() != 'OFFLINE' && recipient.status?.toString() != 'INVISIBLE') {
+                if (recipient.id == authorId) return
+                // Só notifica quem realmente pode ler o canal (evita vazar DMs/mensagens
+                // de canais restritos para todos os usuários online).
+                boolean canRead = true
+                try {
+                    canRead = channelService.getEffectivePermissions(channelId, recipient.id)?.canRead
+                } catch (Exception ignored) {
+                    canRead = false
+                }
+                if (canRead && recipient.status?.toString() != 'OFFLINE' && recipient.status?.toString() != 'INVISIBLE') {
                     messagingTemplate.convertAndSendToUser(recipient.id, '/queue/notifications', [
                         type: 'NEW_MESSAGE',
                         data: [
