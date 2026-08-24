@@ -32,7 +32,7 @@ class S3Service {
     }
 
     String upload(MultipartFile file, String folder) {
-        String key = "${folder}/${Ulid.generate()}_${file.originalFilename}".toString()
+        String key = buildKey(folder, file.originalFilename)
 
         PutObjectRequest request = PutObjectRequest.builder()
             .bucket(bucket)
@@ -43,6 +43,32 @@ class S3Service {
         s3Client.putObject(request, RequestBody.fromInputStream(file.inputStream, file.size))
 
         return key
+    }
+
+    /**
+     * Monta a chave do objeto sanitizando folder e filename, que são controlados
+     * pelo cliente. Evita traversal/escape de prefixo (ex.: folder='../', nomes
+     * com '/' ou '\') e limita o tamanho de cada segmento.
+     */
+    String buildKey(String folder, String fileName) {
+        String safeFolder = sanitizeSegment(folder, 'uploads')
+        String safeName = sanitizeFileName(fileName)
+        return "${safeFolder}/${Ulid.generate()}_${safeName}".toString()
+    }
+
+    private static String sanitizeSegment(String value, String fallback) {
+        if (!value) return fallback
+        def cleaned = value.replaceAll('[^A-Za-z0-9._-]', '_')
+        cleaned = cleaned.replaceAll('\\.{2,}', '_')
+        return cleaned.length() ? cleaned.substring(0, Math.min(cleaned.length(), 64)) : fallback
+    }
+
+    private static String sanitizeFileName(String name) {
+        if (!name) return 'file'
+        // remove separadores de path e caracteres de controle
+        def base = name.replaceAll('[/\\\\]', '_').replaceAll('[\\x00-\\x1f]', '')
+        base = base.replaceAll('\\.{2,}', '_')
+        return base.length() ? base.substring(0, Math.min(base.length(), 200)) : 'file'
     }
 
     String getPresignedUploadUrl(String key, Duration duration, String contentType) {

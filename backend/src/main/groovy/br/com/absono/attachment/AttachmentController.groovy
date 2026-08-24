@@ -72,7 +72,7 @@ class AttachmentController {
         }
 
         def folder = 'uploads'
-        def s3Key = "${folder}/${Ulid.generate()}_${fileName}".toString()
+        def s3Key = s3Service.buildKey(folder, fileName)
         def presignedUrl = s3Service.getPresignedUploadUrl(s3Key, Duration.ofMinutes(15), mimeType)
 
         ResponseEntity.ok([
