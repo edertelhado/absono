@@ -192,6 +192,17 @@ function registerIpcHandlers() {
   })
 }
 
+// will-download é registrado na session.defaultSession (compartilhada). Registrar
+// dentro de createWindow() acumula listeners a cada recriação da janela (vazamento),
+// fazendo cada download disparar todos os handlers antigos.
+function registerSessionHandlers() {
+  session.defaultSession.on('will-download', (_event, item) => {
+    if (!item.getSavePath()) {
+      item.setSavePath(path.join(app.getPath('downloads'), item.getFilename()))
+    }
+  })
+}
+
 function configureMediaAndCertificates() {
   // Confia em qualquer certificado (auto-assinado, expirado, hostname inválido…)
   app.on('certificate-error', (event, _webContents, _url, _error, _certificate, callback) => {
@@ -278,13 +289,8 @@ function createWindow() {
   // O handler é registrado uma única vez em registerIpcHandlers().
 
   // Downloads que eventualmente ocorram dentro do app vão para ~/Downloads
-  // sem diálogo. Links de download do frontend abrem _blank e caem no
-  // navegador do sistema (setWindowOpenHandler), com progresso nativo.
-  mainWindow.webContents.session.on('will-download', (_event, item) => {
-    if (!item.getSavePath()) {
-      item.setSavePath(path.join(app.getPath('downloads'), item.getFilename()))
-    }
-  })
+  // sem diálogo. O handler will-download é registrado uma única vez em
+  // registerSessionHandlers() (session.defaultSession compartilhada).
 
   // Nunca navega para fora do servidor configurado — abre no navegador do sistema
   mainWindow.webContents.on('will-navigate', (event, url) => {
@@ -379,6 +385,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
 
   registerIpcHandlers()
+  registerSessionHandlers()
   configureMediaAndCertificates()
   createWindow()
   createTray()
