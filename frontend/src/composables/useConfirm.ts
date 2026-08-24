@@ -7,8 +7,14 @@ export interface ConfirmState {
   confirmText: string
   cancelText: string
   type: 'info' | 'warning' | 'danger'
-  resolve: ((value: boolean) => void) | null
 }
+
+interface Pending extends ConfirmState {
+  resolve: (value: boolean) => void
+}
+
+const queue: Pending[] = []
+let current: Pending | null = null
 
 const state = ref<ConfirmState>({
   open: false,
@@ -17,8 +23,23 @@ const state = ref<ConfirmState>({
   confirmText: 'Confirmar',
   cancelText: 'Cancelar',
   type: 'warning',
-  resolve: null,
 })
+
+function showNext() {
+  current = queue.shift() ?? null
+  if (!current) {
+    state.value = { ...state.value, open: false }
+    return
+  }
+  state.value = {
+    open: true,
+    title: current.title,
+    description: current.description,
+    confirmText: current.confirmText,
+    cancelText: current.cancelText,
+    type: current.type,
+  }
+}
 
 export function useConfirm() {
   function confirm(opts: {
@@ -28,8 +49,8 @@ export function useConfirm() {
     cancelText?: string
     type?: 'info' | 'warning' | 'danger'
   }): Promise<boolean> {
-    return new Promise((resolve) => {
-      state.value = {
+    return new Promise<boolean>((resolve) => {
+      queue.push({
         open: true,
         title: opts.title,
         description: opts.description ?? '',
@@ -37,18 +58,20 @@ export function useConfirm() {
         cancelText: opts.cancelText ?? 'Cancelar',
         type: opts.type ?? 'warning',
         resolve,
-      }
+      })
+      // Só exibe se nenhum diálogo estiver aberto; caso contrário entra na fila
+      if (!state.value.open) showNext()
     })
   }
 
   function handleConfirm() {
-    state.value.resolve?.(true)
-    state.value.open = false
+    current?.resolve(true)
+    showNext()
   }
 
   function handleCancel() {
-    state.value.resolve?.(false)
-    state.value.open = false
+    current?.resolve(false)
+    showNext()
   }
 
   return { state, confirm, handleConfirm, handleCancel }
