@@ -37,7 +37,10 @@ class InviteController {
 
     @DeleteMapping("/{id}")
     ResponseEntity<?> deleteInvite(@PathVariable String id) {
-        inviteService.deleteInvite(id)
+        Authentication auth = SecurityContextHolder.context.authentication
+        String userId = auth?.name
+        boolean isAdmin = auth?.authorities?.any { it.authority == 'ROLE_ADMIN' }
+        inviteService.deleteInvite(id, userId, isAdmin)
         ResponseEntity.ok([success: true, message: 'Convite excluido com sucesso'])
     }
 

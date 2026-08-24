@@ -61,7 +61,14 @@ class InviteService {
     }
 
     @Transactional
-    void deleteInvite(String id) {
+    void deleteInvite(String id, String requesterId, boolean isAdmin) {
+        def invite = inviteMapper.findById(id)
+        if (!invite) {
+            throw new BusinessException('Convite não encontrado')
+        }
+        if (!isAdmin && invite.createdBy != requesterId) {
+            throw new BusinessException('Você não tem permissão para excluir este convite')
+        }
         inviteMapper.deleteById(id)
     }
 
